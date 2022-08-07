@@ -1,0 +1,27 @@
+pragma solidity =0.8.9;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./TESTERC20Token.sol";
+
+contract TESTGauge{
+
+    IERC20 AMMToken;
+    ERC20 public FakeRewards;
+
+    constructor(address _AMMToken){
+        AMMToken = IERC20(_AMMToken);
+        FakeRewards = new TESTERC20Token("Fake Rewards", "FR");
+    }
+
+    function deposit(uint256 _amount) external {
+        AMMToken.transferFrom(msg.sender, address(this), _amount);
+    }   
+
+    function withdraw(uint256 _amount) external {
+        AMMToken.transfer(msg.sender, _amount);
+    }
+
+    function getReward(address account, address[] memory tokens) external {
+        FakeRewards.transfer(account, 100 ether);
+    }
+}
