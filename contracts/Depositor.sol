@@ -39,9 +39,11 @@ contract Depositor is Ownable {
         AMMToken.transfer(msg.sender, _amount);
     }
 
+    //think about manipulation with fake reward tokens, shouldn't be an issue due to onlyOwner but verify.
     //think about reverts here, i.e. if we call getReward when can it revert?
     //what happens if one reward token isn't transferable, can we skip it?
     function claimRewards( address[] memory _tokens) onlyOwner() public {
+        require(_tokens.length > 0, "Empty tokens array");
         gauge.getReward(address(this), _tokens);
         //some logic here to withdraw each of the tokens?
         uint256 length =  _tokens.length;
@@ -52,9 +54,9 @@ contract Depositor is Ownable {
 
     }
 
-    function viewPendingRewards(address _token) external {
+    function viewPendingRewards(address _token) external view returns(uint256){
         //passthrough to Gauge
-        gauge.earned(_token, address(this)); //ARE WE SURE THIS IS THE RIGHT FUNCTION?
+        return gauge.earned(_token, address(this)); //ARE WE SURE THIS IS THE RIGHT FUNCTION?
     }
     
 }

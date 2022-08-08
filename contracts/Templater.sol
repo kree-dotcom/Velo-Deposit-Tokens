@@ -31,7 +31,7 @@ contract Templater {
             name = string(abi.encodePacked("Deposit-Receipt-StableV1 AMM - ", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
             symbol = string(abi.encodePacked("Receipt-sAMM-", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
         } else {
-            name = string(abi.encodePacked("VDeposit-Receipt-VolatileV1 AMM - ", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
+            name = string(abi.encodePacked("Deposit-Receipt-VolatileV1 AMM - ", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
             symbol = string(abi.encodePacked("Receipt-vAMM-", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
         }
         depositReceipt = new DepositReceipt(name, symbol);
@@ -41,6 +41,7 @@ contract Templater {
     function makeNewDepositor()  external returns(address newDepositor) {
         require(UserToDepositor[msg.sender] == address(0), "User already has Depositor");
         Depositor depositor = new Depositor(address(depositReceipt), AMMToken, gauge);
+        depositor.transferOwnership(msg.sender);
         depositReceipt.addMinter(address(depositor));  
         UserToDepositor[msg.sender] = address(depositor); 
         emit newDepositorMade(msg.sender, address(depositor));   

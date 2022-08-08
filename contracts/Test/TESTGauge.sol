@@ -24,4 +24,12 @@ contract TESTGauge{
     function getReward(address account, address[] memory tokens) external {
         FakeRewards.transfer(account, 100 ether);
     }
+    function earned( address token, address account) external view returns(uint256){
+        if(token == address(FakeRewards)){
+            return(100 ether);
+        }
+        else{
+            return 0;
+        }
+    }
 }
