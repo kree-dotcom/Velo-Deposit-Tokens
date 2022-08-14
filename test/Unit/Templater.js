@@ -20,6 +20,7 @@ describe("Templater contract", function () {
             tokenB.address,
             true,
             alice.address,
+            owner.address,
             bob.address)
 
 

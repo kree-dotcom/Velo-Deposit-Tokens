@@ -16,17 +16,21 @@ contract Templater {
     address public token0;
     address public token1;
     bool public stablePool;
-    address AMMToken;
-    address gauge;
+    address public AMMToken;
+    address public gauge;
+    address public router;
 
     event newDepositorMade(address User, address Depositor);
     event DepositReceiptSetUp(address DepositReceipt);
 
-    constructor(address _token0, address _token1, bool _stable, address _AMMToken, address _gauge){
+    constructor(address _token0, address _token1, bool _stable, address _AMMToken, address _gauge, address _router){
         string memory name;
         string memory symbol;
         AMMToken = _AMMToken;
         gauge = _gauge;
+        router = _router;
+        token0 = _token0;
+        token1 = _token1;
         if (_stable) {
             name = string(abi.encodePacked("Deposit-Receipt-StableV1 AMM - ", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
             symbol = string(abi.encodePacked("Receipt-sAMM-", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
@@ -40,7 +44,7 @@ contract Templater {
 
     function makeNewDepositor()  external returns(address newDepositor) {
         require(UserToDepositor[msg.sender] == address(0), "User already has Depositor");
-        Depositor depositor = new Depositor(address(depositReceipt), AMMToken, gauge);
+        Depositor depositor = new Depositor(address(depositReceipt), AMMToken, gauge, router,  token0, token1, stablePool);
         depositor.transferOwnership(msg.sender);
         depositReceipt.addMinter(address(depositor));  
         UserToDepositor[msg.sender] = address(depositor); 
