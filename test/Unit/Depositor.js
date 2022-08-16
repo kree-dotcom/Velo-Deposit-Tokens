@@ -1,6 +1,6 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
-const { helpers } = require("./testHelpers.js")
+const { helpers } = require("../helpers/testHelpers.js")
 
 describe("Depositor contract", function () {
     const provider = ethers.provider;
@@ -224,12 +224,12 @@ describe("Depositor contract", function () {
             rewardToken = new ethers.Contract(rewards_address, abi, provider);
 
             let expected_rewards = await depositor.viewPendingRewards(rewardToken.address)
-            let gauge_rewards = await gauge.earned(rewardToken.address, owner.address)
+            let gauge_rewards = await gauge.earned(rewardToken.address, depositor.address)
             expect(expected_rewards).to.equal(gauge_rewards)
 
             //test unknown token address
             let expected_rewards_unknown = await depositor.viewPendingRewards(bob.address)
-            let gauge_rewards_unknown = await gauge.earned(bob.address, owner.address)
+            let gauge_rewards_unknown = await gauge.earned(bob.address, depositor.address)
             expect(expected_rewards_unknown).to.equal(0)
             expect(expected_rewards_unknown).to.equal(gauge_rewards_unknown)
 

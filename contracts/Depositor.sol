@@ -67,7 +67,7 @@ contract Depositor is Ownable {
         bool success = AMMToken.transferFrom(msg.sender, address(this), _amount);
         require(success, "TransferFrom failed");
         AMMToken.safeIncreaseAllowance(address(gauge), _amount);
-        gauge.deposit(_amount);
+        gauge.deposit(_amount, 0);
         uint256 NFTId = depositReceipt.safeMint(_amount);
         depositReceipt.safeTransferFrom(address(this), msg.sender, NFTId);
         return(NFTId);

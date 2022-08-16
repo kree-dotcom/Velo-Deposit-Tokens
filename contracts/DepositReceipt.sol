@@ -2,6 +2,8 @@ pragma solidity =0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+//dev debug
+import "hardhat/console.sol";
 
 contract DepositReceipt is  ERC721, AccessControl {
     

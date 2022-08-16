@@ -23,7 +23,15 @@ contract Templater {
     event newDepositorMade(address User, address Depositor);
     event DepositReceiptSetUp(address DepositReceipt);
 
-    constructor(address _token0, address _token1, bool _stable, address _AMMToken, address _gauge, address _router){
+    constructor(
+                address _token0, 
+                address _token1, 
+                bool _stable, 
+                address _AMMToken, 
+                address _gauge, 
+                address _router
+                ){
+                    
         string memory name;
         string memory symbol;
         AMMToken = _AMMToken;

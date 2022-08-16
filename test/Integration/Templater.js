@@ -1,8 +1,9 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
+const { addresses } = require("../helpers/deployedAddresses.js")
 
-describe("Templater contract", function () {
+describe.only("Integration OP Mainnet: Templater contract", function () {
     const provider = ethers.provider;
     
 
@@ -12,16 +13,20 @@ describe("Templater contract", function () {
         Templater = await ethers.getContractFactory("Templater")
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
 
-        tokenA = await TESTERC20Token.deploy("TokenA", "TA")
-        tokenB = await TESTERC20Token.deploy("TokenB", "TB")
+        tokenA = addresses.optimism.USDC //USDC
+        tokenB = addresses.optimism.sUSD //sUSD
+        AMMToken_address = addresses.optimism.AMMToken
+        gauge = addresses.optimism.Gauge
+        router = addresses.optimism.Router
 
         templater = await Templater.deploy(
-            tokenA.address,
-            tokenB.address,
+            tokenA,
+            tokenB,
             true,
-            alice.address,
-            owner.address,
-            bob.address)
+            AMMToken_address,
+            gauge,
+            router
+            )
 
 
     })
