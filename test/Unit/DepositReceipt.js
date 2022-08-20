@@ -1,6 +1,7 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
+const { addresses } = require("../helpers/deployedAddresses.js")
 
 describe("DepositReceipt contract", function () {
     const provider = ethers.provider;
@@ -11,12 +12,27 @@ describe("DepositReceipt contract", function () {
         
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
         DepositReceipt = await ethers.getContractFactory("DepositReceipt")
-        
+        Router = await ethers.getContractFactory("TESTRouter")
+        router = await Router.deploy()
 
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
-            "DR")
+            "DR",
+            router.address,
+            alice.address,
+            bob.address,
+            true
+            )
 
+        //duplicate used for one pricing test
+        depositReceipt2 = await DepositReceipt.deploy(
+                "Deposit_Receipt",
+                "DR",
+                router.address,
+                addresses.optimism.USDC,
+                bob.address,
+                true
+                )
 
     })
 
@@ -107,6 +123,48 @@ describe("DepositReceipt contract", function () {
 
             await expect(depositReceipt.connect(owner).split(nft_id, bad_split_2)).to.be.revertedWith('split must be less than 100%')
 
+        });
+      });
+
+      describe("Pricing Pooled Tokens", function (){
+        
+
+        it("Should quote removable liquidity correctly", async function (){
+            //pass through function so this only checks inputs haven't been mismatched
+            const liquidity = ethers.utils.parseEther('1'); 
+            
+            let output = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
+            
+            let expected_output = await router.quoteRemoveLiquidity(alice.address, bob.address, true, liquidity)
+    
+            expect(output[0]).to.equal(expected_output[0])
+            expect(output[1]).to.equal(expected_output[1])
+            
+
+        });
+
+        it("Should price liquidity right depending on which token USDC is", async function (){
+            const liquidity = ethers.utils.parseEther('1'); 
+            const NORMALIZE_DECIMALS = 10 ** 12
+            let value = await depositReceipt.priceLiquidity(liquidity)
+            //as token0 is not USDC we have assumed token1 is
+            let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
+            let value_token0 = outputs[0].mul(3).div(5)
+            let value_token1 = outputs[1]
+            let expected_value = ( value_token0 ).add( value_token1 ).mul(NORMALIZE_DECIMALS)
+            expect(value).to.equal(expected_value)
+
+
+            //in the second instance USDC is token0
+            let value2 = await depositReceipt2.priceLiquidity(liquidity)
+            //as token0 is not USDC we have assumed token1 is
+            let outputs2 = await depositReceipt2.viewQuoteRemoveLiquidity(liquidity)
+            value_token0 = outputs2[0]
+            value_token1 = outputs2[1].mul(3).div(5)
+            let expected_value2 = ( value_token0 ).add(value_token1 ).mul(NORMALIZE_DECIMALS)
+            expect(value2).to.equal(expected_value2)
+
+            
         });
       });
 })

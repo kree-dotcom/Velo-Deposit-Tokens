@@ -42,7 +42,14 @@ const ERC20 = [
   ]
 
   const Gauge = [
-    "function earned(address, address) external view returns(uint256)"
+    "function earned(address, address) external view returns(uint256)",
+
+    "function deposit(uint256, uint256) external"
+  ]
+
+  const Router = [
+    "function quoteRemoveLiquidity(address, address, bool, uint256) external view returns(uint256, uint256)",
+    "function getAmountOut(uint256, address, address) external view returns(uint256, bool)"
   ]
 
   ABIs = {ERC20: ERC20, 
@@ -50,7 +57,8 @@ const ERC20 = [
           LyraLP :LyraLP, 
           GreekCache : GreekCache,
           OptionMarket : OptionMarket,
-          Gauge : Gauge}
+          Gauge : Gauge,
+          Router : Router}
   module.exports = { ABIs }
 
   

@@ -18,7 +18,7 @@ async function impersonateForToken(provider, receiver, ERC20, donerAddress, amou
     
   }
 
-describe.only("Integration OP Mainnet: Depositor contract", function () {
+describe("Integration OP Mainnet: Depositor contract", function () {
     const provider = ethers.provider;
     const stable = true;
     tokenA = addresses.optimism.USDC //USDC
@@ -274,5 +274,6 @@ describe.only("Integration OP Mainnet: Depositor contract", function () {
             
             
         });
+
     });
 })

@@ -46,7 +46,13 @@ contract Templater {
             name = string(abi.encodePacked("Deposit-Receipt-VolatileV1 AMM - ", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
             symbol = string(abi.encodePacked("Receipt-vAMM-", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
         }
-        depositReceipt = new DepositReceipt(name, symbol);
+        depositReceipt = new DepositReceipt(name, 
+                                            symbol, 
+                                            _router, 
+                                            _token0, 
+                                            _token1, 
+                                            _stable);
+                                            
         emit DepositReceiptSetUp(address(depositReceipt));
     }
 
@@ -59,5 +65,10 @@ contract Templater {
         emit newDepositorMade(msg.sender, address(depositor));   
         return address(depositor);
     }
+
+    //Add viewQuoteRemoveLiquidity function here
+
+    //Add means of valuing the removed liquidity in dollars?
+    //perhaps generally cast it to ETH then use the chainlink oracle feed?
     
 }

@@ -1,11 +1,18 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
+const { addresses } = require("../helpers/deployedAddresses.js")
+const { ABIs } = require("../helpers/abi.js")
 
-describe.only("DepositReceipt contract", function () {
+describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
+
+    const router_address = addresses.optimism.Router
+    const USDC = addresses.optimism.USDC
+    const sUSD = addresses.optimism.sUSD
+    router = new ethers.Contract(router_address, ABIs.Router, provider)
 
     before(async function () {
         
@@ -15,7 +22,12 @@ describe.only("DepositReceipt contract", function () {
 
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
-            "DR")
+            "DR",
+            router.address,
+            USDC,
+            sUSD,
+            true
+            )
 
 
     })
@@ -48,7 +60,7 @@ describe.only("DepositReceipt contract", function () {
 
         it("Should only allow MINTER_ROLE address to mint/burn", async function (){
             await depositReceipt.connect(owner).addMinter(bob.address)
-            const amount = ethers.utils.parseEther('353');
+            const amount = ethers.utils.parseEther('353')
             await depositReceipt.connect(bob).safeMint(amount)
             let nft_id = 1
             expect( await depositReceipt.ownerOf(nft_id)).to.equal(bob.address)
@@ -65,12 +77,12 @@ describe.only("DepositReceipt contract", function () {
 
         it("Should only allow owner to split the NFT", async function (){
             await depositReceipt.connect(owner).addMinter(bob.address)
-            const amount = ethers.utils.parseEther('353');
-            const BASE = ethers.utils.parseEther('1');
+            const amount = ethers.utils.parseEther('353')
+            const BASE = ethers.utils.parseEther('1')
             await depositReceipt.connect(bob).safeMint(amount)
             let nft_id = 1
             let new_nft_id = nft_id +1
-            let split = ethers.utils.parseEther('0.53'); //53%
+            let split = ethers.utils.parseEther('0.53') //53%
             expect( await depositReceipt.ownerOf(nft_id)).to.equal(bob.address)
             expect( await depositReceipt.pooledTokens(nft_id)).to.equal(amount)
         
@@ -94,19 +106,76 @@ describe.only("DepositReceipt contract", function () {
 
         it("Should reject split percentages not in [0,100)", async function (){
             await depositReceipt.connect(owner).addMinter(bob.address)
-            const amount = ethers.utils.parseEther('353');
-            const BASE = ethers.utils.parseEther('1');
+            const amount = ethers.utils.parseEther('353')
+            const BASE = ethers.utils.parseEther('1')
             await depositReceipt.connect(bob).safeMint(amount)
             let nft_id = 1
             let new_nft_id = nft_id +1
-            let bad_split = ethers.utils.parseEther('1'); //100%
-            let bad_split_2 = ethers.utils.parseEther('2'); //200%
+            let bad_split = ethers.utils.parseEther('1') //100%
+            let bad_split_2 = ethers.utils.parseEther('2') //200%
         
             //call split here, check correct functioning
             await expect(depositReceipt.connect(owner).split(nft_id, bad_split)).to.be.revertedWith('split must be less than 100%')
 
             await expect(depositReceipt.connect(owner).split(nft_id, bad_split_2)).to.be.revertedWith('split must be less than 100%')
 
+        });
+      });
+
+      describe("Pricing Pooled Tokens", function (){
+        
+
+        it("Should quote removable liquidity correctly", async function (){
+            //pass through function so this only checks inputs haven't been mismatched
+            const liquidity = ethers.utils.parseEther('1') 
+            
+            let output = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
+            //error here
+            let expected_output = await router.quoteRemoveLiquidity(USDC, sUSD, true, liquidity)
+            console.log("EO ", expected_output)
+            expect(output[0]).to.equal(expected_output[0])
+            expect(output[1]).to.equal(expected_output[1])
+            
+
+        });
+
+        it("Should price liquidity right depending on which token USDC is", async function (){
+            const liquidity = ethers.utils.parseEther('1')
+            const NORMALIZE_DECIMALS = 10 ** 12
+            let value = await depositReceipt.priceLiquidity(liquidity)
+            
+            //as token0 is not USDC we have assumed token1 is
+            let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
+            
+            let value_token0 = outputs[0] //as token0 is USDC
+            let value_token1 = await router.getAmountOut(outputs[1], sUSD, USDC)
+            let expected_value = ( value_token0 ).add( value_token1[0] ).mul(NORMALIZE_DECIMALS)
+            expect(value).to.equal(expected_value)
+
+
+            //in the second instance USDC is token1
+
+            depositReceipt2 = await DepositReceipt.deploy(
+                "Deposit_Receipt2",
+                "DR2",
+                router.address,
+                sUSD,
+                USDC,
+                true
+                )
+
+                
+            value = await depositReceipt2.priceLiquidity(liquidity)
+            
+            //as token0 is not USDC we have assumed token1 is
+            outputs = await depositReceipt2.viewQuoteRemoveLiquidity(liquidity)
+                
+            value_token0 = await router.getAmountOut(outputs[0], sUSD, USDC)
+            value_token1 = outputs[1] //as token1 is USDC
+            expected_value = ( value_token0[0] ).add( value_token1 ).mul(NORMALIZE_DECIMALS)
+            expect(value).to.equal(expected_value)
+
+            
         });
       });
 })

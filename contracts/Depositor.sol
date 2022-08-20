@@ -18,10 +18,8 @@ contract Depositor is Ownable {
     DepositReceipt public depositReceipt;
     IERC20 public AMMToken;
     IGauge public gauge;
-    IRouter public router;
-    address public token0; 
-    address public token1;
-    bool public stable;
+    
+    
 
     constructor(
                 address _depositReceipt,
@@ -36,12 +34,9 @@ contract Depositor is Ownable {
         AMMToken = IERC20(_AMMToken);
         gauge = IGauge(_gauge);
         depositReceipt = DepositReceipt(_depositReceipt);
-        router = IRouter(_router);
-        token0 = _token0;
-        token1 = _token1;
-        stable = _stable;
     }
 
+    //function required to receive ERC721s to this contract
     function onERC721Received(
         address operator,
         address from,
@@ -51,17 +46,7 @@ contract Depositor is Ownable {
         return(IERC721Receiver.onERC721Received.selector);
     }
 
-    function viewQuoteRemoveLiquidity(uint256 _liquidity) external view returns( uint256, uint256 ){
-        uint256 token0Amount;
-        uint256 token1Amount;
-        (token0Amount, token1Amount) = router.quoteRemoveLiquidity(
-                                    token0, 
-                                    token1,
-                                    stable,
-                                    _liquidity );
-        return (token0Amount, token1Amount);
 
-    }
 
     function depositToGauge(uint256 _amount) onlyOwner() external returns(uint256){
         bool success = AMMToken.transferFrom(msg.sender, address(this), _amount);
