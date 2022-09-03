@@ -29,7 +29,8 @@ contract Templater {
                 bool _stable, 
                 address _AMMToken, 
                 address _gauge, 
-                address _router
+                address _router,
+                address _priceFeed
                 ){
                     
         string memory name;
@@ -51,7 +52,9 @@ contract Templater {
                                             _router, 
                                             _token0, 
                                             _token1, 
-                                            _stable);
+                                            _stable,
+                                            _priceFeed
+                                            );
                                             
         emit DepositReceiptSetUp(address(depositReceipt));
     }
@@ -66,9 +69,5 @@ contract Templater {
         return address(depositor);
     }
 
-    //Add viewQuoteRemoveLiquidity function here
-
-    //Add means of valuing the removed liquidity in dollars?
-    //perhaps generally cast it to ETH then use the chainlink oracle feed?
     
 }

@@ -5,15 +5,17 @@ const { addresses } = require("../helpers/deployedAddresses.js")
 
 describe("DepositReceipt contract", function () {
     const provider = ethers.provider;
-    const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
-    const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
+    const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"))
+    const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"))
 
     before(async function () {
         
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
         DepositReceipt = await ethers.getContractFactory("DepositReceipt")
         Router = await ethers.getContractFactory("TESTRouter")
+        PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
         router = await Router.deploy()
+        priceOracle = await PriceOracle.deploy()
 
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
@@ -21,7 +23,8 @@ describe("DepositReceipt contract", function () {
             router.address,
             alice.address,
             bob.address,
-            true
+            true,
+            priceOracle.address
             )
 
         //duplicate used for one pricing test
@@ -31,7 +34,8 @@ describe("DepositReceipt contract", function () {
                 router.address,
                 addresses.optimism.USDC,
                 bob.address,
-                true
+                true,
+                priceOracle.address
                 )
 
     })
@@ -145,25 +149,25 @@ describe("DepositReceipt contract", function () {
 
         it("Should price liquidity right depending on which token USDC is", async function (){
             const liquidity = ethers.utils.parseEther('1'); 
-            const NORMALIZE_DECIMALS = 10 ** 12
             let value = await depositReceipt.priceLiquidity(liquidity)
             //as token0 is not USDC we have assumed token1 is
             let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            let value_token0 = outputs[0].mul(3).div(5)
+            console.log("removables ", outputs[0].toString(), " ", outputs[1].toString())
+            let value_token0 = outputs[0].mul(11).div(10)
             let value_token1 = outputs[1]
-            let expected_value = ( value_token0 ).add( value_token1 ).mul(NORMALIZE_DECIMALS)
+            let expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
 
-
+            
             //in the second instance USDC is token0
             let value2 = await depositReceipt2.priceLiquidity(liquidity)
             //as token0 is not USDC we have assumed token1 is
             let outputs2 = await depositReceipt2.viewQuoteRemoveLiquidity(liquidity)
             value_token0 = outputs2[0]
-            value_token1 = outputs2[1].mul(3).div(5)
-            let expected_value2 = ( value_token0 ).add(value_token1 ).mul(NORMALIZE_DECIMALS)
+            value_token1 = outputs2[1].mul(11).div(10)
+            let expected_value2 = ( value_token0 ).add(value_token1 )
             expect(value2).to.equal(expected_value2)
-
+            
             
         });
       });

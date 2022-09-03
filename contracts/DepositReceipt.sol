@@ -3,6 +3,10 @@ pragma solidity =0.8.9;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
+//chainlink aggregator interface extended 
+import "./Interfaces/IAggregatorV3.sol";
+import "./Interfaces/IAccessControlledOffchainAggregator.sol";
+
 import "./Interfaces/IRouter.sol";
 //dev debug
 import "hardhat/console.sol";
@@ -13,7 +17,8 @@ contract DepositReceipt is  ERC721, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");  
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");  
 
-    uint256 private NORMALIZE_DECIMALS = 1e12; //constant to bring 6dp USDC up to 18dp standard
+    uint256 private immutable oracleBase;
+    uint256 private HEARTBEAT_TIME = 20 minutes; //Check heartbeat frequency when adding new feeds
     uint256 private BASE = 1 ether; //division base
     //Mapping from NFTid to number of associated poolTokens
     mapping(uint256 => uint256) public pooledTokens;
@@ -28,8 +33,15 @@ contract DepositReceipt is  ERC721, AccessControl {
     address public immutable token0; 
     address public immutable token1;
     bool public immutable stable;
+
+    
     //router used for underlying asset quotes
     IRouter public immutable router;
+    //Chainlink oracle source
+    IAggregatorV3 priceFeed;
+    //hardcoded price bounds used by chainlink
+    int192 immutable maxPrice;
+    int192 immutable minPrice;
 
     event AddNewMinter(address indexed account, address indexed addedBy);
     event NFTSplit(uint256 oldNFTId, uint256 newNFTId);
@@ -40,7 +52,8 @@ contract DepositReceipt is  ERC721, AccessControl {
                 address _router, 
                 address _token0,
                 address _token1,
-                bool _stable) 
+                bool _stable,
+                address _priceFeed) 
                 ERC721(_name, _symbol){
 
         //we dont want the `DEFAULT_ADMIN_ROLE` to exist as this doesn't require a 
@@ -53,6 +66,12 @@ contract DepositReceipt is  ERC721, AccessControl {
         token0 = _token0;
         token1 = _token1;
         stable = _stable;
+        priceFeed = IAggregatorV3(_priceFeed);
+        IAccessControlledOffchainAggregator  aggregator = IAccessControlledOffchainAggregator(priceFeed.aggregator());
+        //fetch the pricefeeds hard limits so we can be aware if these have been reached.
+        minPrice = aggregator.minAnswer();
+        maxPrice = aggregator.maxAnswer();
+        oracleBase = 10 ** priceFeed.decimals();  //Chainlink USD oracles have 8d.p.
     }
 
     modifier onlyMinter{
@@ -85,7 +104,7 @@ contract DepositReceipt is  ERC721, AccessControl {
    */
 
    //Borrowed from original Lyra.finance ERC721 design.
-  function split(uint256 NFTId, uint256 percentageSplit) external returns (uint) {
+  function split(uint256 NFTId, uint256 percentageSplit) external returns (uint256) {
     require(percentageSplit < BASE, "split must be less than 100%");
     require(ownerOf(NFTId) == msg.sender, "only the owner can split their NFT");
 
@@ -151,6 +170,28 @@ contract DepositReceipt is  ERC721, AccessControl {
 
     }
 
+    /** 
+     * @dev This function is view but uses block.timestamp which will only return a non-zero value in a tx call.
+     * @return Oracle price converted to a uint256 for ease of use elsewhere
+     */
+    function getOraclePrice() public view returns (uint256 ) {
+        (
+            /*uint80 roundID*/,
+            int signedPrice,
+            /*uint startedAt*/,
+            uint timeStamp,
+            /*uint80 answeredInRound*/
+        ) = priceFeed.latestRoundData();
+        require(signedPrice > 0, "Negative Oracle Price");
+        require(timeStamp >= block.timestamp - HEARTBEAT_TIME , "Stale pricefeed");
+        require(signedPrice < maxPrice, "Upper price bound breached");
+        require(signedPrice > minPrice, "Lower price bound breached");
+        uint256 price = uint256(signedPrice);
+        return price;
+
+
+    }
+
    /**
     *  @notice this is used to price pooled Tokens by determining their underlying assets and then pricing these
     *  @notice the two ways to do this are to price to USDC as  a dollar equivalent or to ETH then use Chainlink price feeds
@@ -169,17 +210,18 @@ contract DepositReceipt is  ERC721, AccessControl {
             //hardcode value of USDC at $1
             value0 = token0Amount;
             //swap value takes into account slippage
-            (value1, ) = router.getAmountOut(token1Amount,token1, token0 );
+            //(value1, ) = router.getAmountOut(token1Amount,token1, token0 );
+            value1 = (token1Amount * getOraclePrice()) / oracleBase;
         }
         //token1 must be USDC 
         else {
             //hardcode value of USDC at $1
             value1 = token1Amount;
             //swap value takes into account slippage
-            (value0, ) = router.getAmountOut(token0Amount,token0, token1 );
+            value0 = (token0Amount * getOraclePrice()) / oracleBase;
         }
         //Invariant: both value0 and value1 are in USDC scale 6.d.p now
         //USDC has only 6 decimals so we bring it up to the same scale as other 18d.p ERC20s
-        return((value0 + value1)*NORMALIZE_DECIMALS);
+        return(value0 + value1);
     }
 }
