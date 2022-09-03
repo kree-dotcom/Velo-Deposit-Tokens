@@ -18,7 +18,7 @@ contract DepositReceipt is  ERC721, AccessControl {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");  
 
     uint256 private immutable oracleBase;
-    uint256 private HEARTBEAT_TIME = 20 minutes; //Check heartbeat frequency when adding new feeds
+    uint256 private HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
     uint256 private BASE = 1 ether; //division base
     //Mapping from NFTid to number of associated poolTokens
     mapping(uint256 => uint256) public pooledTokens;

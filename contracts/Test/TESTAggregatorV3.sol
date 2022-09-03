@@ -5,8 +5,12 @@ contract TESTAggregatorV3 {
 
     TESTAccessControlledOffchainAggregator public aggregator;
 
+    int192 price;
+    uint256 staleTimestamp;
+
     constructor() {
         aggregator = new TESTAccessControlledOffchainAggregator();
+        price = 110000000;
     }
 
     function decimals() external view returns(uint8){
@@ -22,17 +26,33 @@ contract TESTAggregatorV3 {
         return(100000000000); //$1000.00 in oracle scale
     }
 
+    function setPrice(int192 _price) external{
+        price = _price;
+    }
+
+    function setTimestamp(uint256 _timestamp) external{
+        staleTimestamp = _timestamp;
+    }
+
     function latestRoundData() external view returns(
         uint80,
         int, 
         uint256, 
         uint256, 
         uint80 ){
+
+        uint256 updatedAt;
+        if(staleTimestamp == 0){
+            updatedAt = block.timestamp;
+        }
+        else{
+            updatedAt = staleTimestamp;
+        }
         return(
             0,
-            110000000, //$1.1 in oracle scale
+            price, //$1.1 in oracle scale
             block.timestamp -10, //round started at
-            block.timestamp, //updatedAt
+            updatedAt, //updatedAt
             0
         );
     }

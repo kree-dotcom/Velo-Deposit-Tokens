@@ -170,5 +170,29 @@ describe("DepositReceipt contract", function () {
             
             
         });
+
+        it.only("Should revert if Price is outside of boundaries", async function (){
+            too_high_price = 100000000000
+            too_low_price = 100
+            negative_price = -1
+            priceOracle.setPrice(too_high_price)
+            const liquidity = ethers.utils.parseEther('1'); 
+
+            await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Upper price bound breached");
+            priceOracle.setPrice(too_low_price)
+            await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Lower price bound breached");
+            priceOracle.setPrice(negative_price)
+            await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Negative Oracle Price");
+            
+        });
+
+        it.only("Should revert if Price update timestamp is stale", async function (){
+            stale_timestamp = 1000000
+            priceOracle.setTimestamp(stale_timestamp)
+            const liquidity = ethers.utils.parseEther('1'); 
+
+            await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Stale pricefeed");
+            
+        });
       });
 })

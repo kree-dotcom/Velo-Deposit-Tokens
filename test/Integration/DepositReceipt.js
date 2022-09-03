@@ -12,7 +12,10 @@ describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
     const router_address = addresses.optimism.Router
     const USDC = addresses.optimism.USDC
     const sUSD = addresses.optimism.sUSD
+    const price_feed_address = addresses.optimism.Chainlink_SUSD_Feed
+
     router = new ethers.Contract(router_address, ABIs.Router, provider)
+    price_feed = new ethers.Contract(price_feed_address, ABIs.PriceFeed, provider)
 
     before(async function () {
         
@@ -26,7 +29,8 @@ describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
             router.address,
             USDC,
             sUSD,
-            true
+            true,
+            price_feed.address
             )
 
 
@@ -141,16 +145,19 @@ describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
 
         it("Should price liquidity right depending on which token USDC is", async function (){
             const liquidity = ethers.utils.parseEther('1')
-            const NORMALIZE_DECIMALS = 10 ** 12
+            const ORACLE_BASE = 10 ** 8
             let value = await depositReceipt.priceLiquidity(liquidity)
             
             //as token0 is not USDC we have assumed token1 is
             let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
             
             let value_token0 = outputs[0] //as token0 is USDC
-            let value_token1 = await router.getAmountOut(outputs[1], sUSD, USDC)
-            let expected_value = ( value_token0 ).add( value_token1[0] ).mul(NORMALIZE_DECIMALS)
+            let latest_round = await (price_feed.latestRoundData())
+            let price = latest_round[1]
+            let value_token1 = outputs[1].mul(price).div(ORACLE_BASE)
+            let expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
+
 
 
             //in the second instance USDC is token1
@@ -161,18 +168,21 @@ describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
                 router.address,
                 sUSD,
                 USDC,
-                true
+                true,
+                price_feed.address
                 )
 
                 
             value = await depositReceipt2.priceLiquidity(liquidity)
             
+            outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
             //as token0 is not USDC we have assumed token1 is
-            outputs = await depositReceipt2.viewQuoteRemoveLiquidity(liquidity)
+            latest_round = await (price_feed.latestRoundData())
+            price = latest_round[1]
+            value_token0 = outputs[1].mul(price).div(ORACLE_BASE)
                 
-            value_token0 = await router.getAmountOut(outputs[0], sUSD, USDC)
-            value_token1 = outputs[1] //as token1 is USDC
-            expected_value = ( value_token0[0] ).add( value_token1 ).mul(NORMALIZE_DECIMALS)
+            value_token1 = outputs[0] //as token1 is USDC
+            expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
 
             

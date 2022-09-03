@@ -52,13 +52,18 @@ const ERC20 = [
     "function getAmountOut(uint256, address, address) external view returns(uint256, bool)"
   ]
 
+  const PriceFeed = [
+    "function latestRoundData() external view returns(uint80, int256, uint256, uint256, uint80)"
+  ]
+
   ABIs = {ERC20: ERC20, 
           SynthSystem: SynthSystem, 
           LyraLP :LyraLP, 
           GreekCache : GreekCache,
           OptionMarket : OptionMarket,
           Gauge : Gauge,
-          Router : Router}
+          Router : Router,
+          PriceFeed : PriceFeed}
   module.exports = { ABIs }
 
   
