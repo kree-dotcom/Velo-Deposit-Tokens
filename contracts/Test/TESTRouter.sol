@@ -11,7 +11,12 @@ contract TESTRouter {
 
     function quoteRemoveLiquidity(address tokenA, address tokenB, bool stable, uint256 liquidity) external view returns(uint256 amountA, uint256 amountB){
         //return different values to make unit test error detection easier
-        return(liquidity, liquidity*2);
+        if(tokenA == USDC){
+            return(liquidity/1e12, (liquidity *11) /10); 
+        }
+        else{
+            return((liquidity *11) /10, liquidity/1e12); 
+        }
     }
 
     function getAmountOut(uint256 amountIn, address tokenIn, address tokenOut) external view returns(uint256 amount, bool stable){

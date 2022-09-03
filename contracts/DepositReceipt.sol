@@ -20,6 +20,7 @@ contract DepositReceipt is  ERC721, AccessControl {
     uint256 private immutable oracleBase;
     uint256 private HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
     uint256 private BASE = 1 ether; //division base
+    uint256 private SCALE_SHIFT = 1e12; //brings USDC 6.d.p up to 18d.p. standard
     //Mapping from NFTid to number of associated poolTokens
     mapping(uint256 => uint256) public pooledTokens;
     //Mapping from NFTid to original depositor contract(where tokens can be redeemed by anyone)
@@ -208,19 +209,18 @@ contract DepositReceipt is  ERC721, AccessControl {
         uint256 value1;
         if (token0 == USDC){
             //hardcode value of USDC at $1
-            value0 = token0Amount;
-            //swap value takes into account slippage
-            //(value1, ) = router.getAmountOut(token1Amount,token1, token0 );
+            value0 = token0Amount * SCALE_SHIFT;
+            
             value1 = (token1Amount * getOraclePrice()) / oracleBase;
         }
         //token1 must be USDC 
         else {
             //hardcode value of USDC at $1
-            value1 = token1Amount;
-            //swap value takes into account slippage
+            value1 = token1Amount * SCALE_SHIFT;
+           
             value0 = (token0Amount * getOraclePrice()) / oracleBase;
         }
-        //Invariant: both value0 and value1 are in USDC scale 6.d.p now
+        //Invariant: both value0 and value1 are in ETH scale 6.d.p now
         //USDC has only 6 decimals so we bring it up to the same scale as other 18d.p ERC20s
         return(value0 + value1);
     }

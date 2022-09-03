@@ -136,7 +136,7 @@ describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
             let output = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
             //error here
             let expected_output = await router.quoteRemoveLiquidity(USDC, sUSD, true, liquidity)
-            console.log("EO ", expected_output)
+    
             expect(output[0]).to.equal(expected_output[0])
             expect(output[1]).to.equal(expected_output[1])
             
@@ -146,12 +146,13 @@ describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
         it("Should price liquidity right depending on which token USDC is", async function (){
             const liquidity = ethers.utils.parseEther('1')
             const ORACLE_BASE = 10 ** 8
+            const SCALE_SHIFT = ethers.utils.parseEther('0.000001'); //1e12 used to scale USDC up
             let value = await depositReceipt.priceLiquidity(liquidity)
             
             //as token0 is not USDC we have assumed token1 is
             let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            
-            let value_token0 = outputs[0] //as token0 is USDC
+            //as token0 is USDC we just scale up
+            let value_token0 = outputs[0].mul(SCALE_SHIFT)
             let latest_round = await (price_feed.latestRoundData())
             let price = latest_round[1]
             let value_token1 = outputs[1].mul(price).div(ORACLE_BASE)
@@ -180,8 +181,9 @@ describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
             latest_round = await (price_feed.latestRoundData())
             price = latest_round[1]
             value_token0 = outputs[1].mul(price).div(ORACLE_BASE)
-                
-            value_token1 = outputs[0] //as token1 is USDC
+            
+            //as token1 is USDC
+            value_token1 = outputs[0].mul(SCALE_SHIFT)
             expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
 

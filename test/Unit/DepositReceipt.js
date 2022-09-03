@@ -147,14 +147,14 @@ describe("DepositReceipt contract", function () {
 
         });
 
-        it("Should price liquidity right depending on which token USDC is", async function (){
+        it.only("Should price liquidity right depending on which token USDC is", async function (){
             const liquidity = ethers.utils.parseEther('1'); 
+            const SCALE_SHIFT = ethers.utils.parseEther('0.000001'); //1e12 used to scale USDC up
             let value = await depositReceipt.priceLiquidity(liquidity)
             //as token0 is not USDC we have assumed token1 is
             let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            console.log("removables ", outputs[0].toString(), " ", outputs[1].toString())
             let value_token0 = outputs[0].mul(11).div(10)
-            let value_token1 = outputs[1]
+            let value_token1 = outputs[1].mul(SCALE_SHIFT)
             let expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
 
@@ -163,7 +163,7 @@ describe("DepositReceipt contract", function () {
             let value2 = await depositReceipt2.priceLiquidity(liquidity)
             //as token0 is not USDC we have assumed token1 is
             let outputs2 = await depositReceipt2.viewQuoteRemoveLiquidity(liquidity)
-            value_token0 = outputs2[0]
+            value_token0 = outputs2[0].mul(SCALE_SHIFT)
             value_token1 = outputs2[1].mul(11).div(10)
             let expected_value2 = ( value_token0 ).add(value_token1 )
             expect(value2).to.equal(expected_value2)
@@ -171,7 +171,7 @@ describe("DepositReceipt contract", function () {
             
         });
 
-        it.only("Should revert if Price is outside of boundaries", async function (){
+        it("Should revert if Price is outside of boundaries", async function (){
             too_high_price = 100000000000
             too_low_price = 100
             negative_price = -1
@@ -186,7 +186,7 @@ describe("DepositReceipt contract", function () {
             
         });
 
-        it.only("Should revert if Price update timestamp is stale", async function (){
+        it("Should revert if Price update timestamp is stale", async function (){
             stale_timestamp = 1000000
             priceOracle.setTimestamp(stale_timestamp)
             const liquidity = ethers.utils.parseEther('1'); 
