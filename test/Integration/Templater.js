@@ -11,13 +11,14 @@ describe("Integration OP Mainnet: Templater contract", function () {
         
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
         Templater = await ethers.getContractFactory("Templater")
-        TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
+        //TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
 
         tokenA = addresses.optimism.USDC //USDC
         tokenB = addresses.optimism.sUSD //sUSD
         AMMToken_address = addresses.optimism.AMMToken
         gauge = addresses.optimism.Gauge
         router = addresses.optimism.Router
+        pricefeed_address = addresses.optimism.Chainlink_SUSD_Feed
 
         templater = await Templater.deploy(
             tokenA,
@@ -25,7 +26,8 @@ describe("Integration OP Mainnet: Templater contract", function () {
             true,
             AMMToken_address,
             gauge,
-            router
+            router,
+            pricefeed_address
             )
 
 

@@ -13,7 +13,7 @@ contract TESTGauge{
         FakeRewards = new TESTERC20Token("Fake Rewards", "FR");
     }
 
-    function deposit(uint256 _amount) external {
+    function deposit(uint256 _amount, uint tokenId) external {
         AMMToken.transferFrom(msg.sender, address(this), _amount);
     }   
 

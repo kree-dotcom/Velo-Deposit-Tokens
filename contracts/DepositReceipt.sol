@@ -1,7 +1,8 @@
 pragma solidity =0.8.9;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 //chainlink aggregator interface extended 
 import "./Interfaces/IAggregatorV3.sol";
@@ -11,7 +12,7 @@ import "./Interfaces/IRouter.sol";
 //dev debug
 import "hardhat/console.sol";
 
-contract DepositReceipt is  ERC721, AccessControl {
+contract DepositReceipt is  ERC721Enumerable, AccessControl {
     
     // Role based access control, minters can mint or burn moUSD
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");  
@@ -64,6 +65,23 @@ contract DepositReceipt is  ERC721, AccessControl {
         currentLastId = 1; //avoid id 0
         //set up details for underlying tokens
         router = IRouter(_router);
+        //here we check one token is USDC and that the other token has 18d.p.
+        //this prevents pricing mistakes and is defensive design against dev oversight.
+        /*
+        bytes memory USDCSymbol = abi.encodePacked("USDC");
+        bytes memory token0Symbol = abi.encodePacked(IERC20Metadata(_token0).symbol());
+        if (keccak256(token0Symbol) == keccak256(USDCSymbol)){
+            require( IERC20Metadata(_token1).decimals() == 18, "Token does not have 18dp");
+        }
+        else
+        {   
+            bytes memory token1Symbol = abi.encodePacked(IERC20Metadata(_token1).symbol());
+            
+            require( keccak256(token1Symbol) == keccak256(USDCSymbol), "One token must be USDC");
+            require( IERC20Metadata(_token0).decimals() == 18, "Token does not have 18dp");
+            
+        }*/
+
         token0 = _token0;
         token1 = _token1;
         stable = _stable;
@@ -93,30 +111,30 @@ contract DepositReceipt is  ERC721, AccessControl {
     /**
    * @notice as supportsInterface is present in both ERC721 and AccessControl we must specify the override here to dictate the order
    */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, AccessControl) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable, AccessControl) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
     /**
    * @notice Splits a deposit Receipt  into two NFTs. Assigns `percentageSplit` of the original
    * pooled tokens to the new certificate.
-   *
-   * @param NFTId The id of the DepositReceipt NFT.
-   * @param percentageSplit The percentage of pooled tokens assigned to the new NFT.
+   * @notice only the owner of an NFTId or approved approved addresses can split an NFT
+   * @param _NFTId The id of the DepositReceipt NFT.
+   * @param _percentageSplit The percentage of pooled tokens assigned to the new NFT.
    */
 
    //Borrowed from original Lyra.finance ERC721 design.
-  function split(uint256 NFTId, uint256 percentageSplit) external returns (uint256) {
-    require(percentageSplit < BASE, "split must be less than 100%");
-    require(ownerOf(NFTId) == msg.sender, "only the owner can split their NFT");
+  function split(uint256 _NFTId, uint256 _percentageSplit) external returns (uint256) {
+    require(_percentageSplit < BASE, "split must be less than 100%");
+    require(_isApprovedOrOwner(msg.sender, _NFTId), "ERC721: caller is not token owner or approved");
 
-    uint256 existingPooledTokens = pooledTokens[NFTId];
-    uint256 newPooledTokens = (existingPooledTokens * percentageSplit)/ BASE;
-    pooledTokens[NFTId] = existingPooledTokens - newPooledTokens;
+    uint256 existingPooledTokens = pooledTokens[_NFTId];
+    uint256 newPooledTokens = (existingPooledTokens * _percentageSplit)/ BASE;
+    pooledTokens[_NFTId] = existingPooledTokens - newPooledTokens;
     uint256 newNFTId = _mintNewNFT(newPooledTokens);
     
 
-    emit NFTSplit(NFTId, newNFTId);
-    emit NFTDataModified(NFTId, existingPooledTokens, existingPooledTokens - newPooledTokens);
+    emit NFTSplit(_NFTId, newNFTId);
+    emit NFTDataModified(_NFTId, existingPooledTokens, existingPooledTokens - newPooledTokens);
     emit NFTDataModified(newNFTId, 0, newPooledTokens);
     return newNFTId;
     }

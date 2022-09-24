@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 //another trusted minter.
 contract Templater {
 
-    DepositReceipt depositReceipt;
+    DepositReceipt public depositReceipt;
     mapping(address => address) public UserToDepositor;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     //store token info to know which pooled pair this Templater relates to.
@@ -61,7 +61,7 @@ contract Templater {
 
     function makeNewDepositor()  external returns(address newDepositor) {
         require(UserToDepositor[msg.sender] == address(0), "User already has Depositor");
-        Depositor depositor = new Depositor(address(depositReceipt), AMMToken, gauge, router,  token0, token1, stablePool);
+        Depositor depositor = new Depositor(address(depositReceipt), AMMToken, gauge);
         depositor.transferOwnership(msg.sender);
         depositReceipt.addMinter(address(depositor));  
         UserToDepositor[msg.sender] = address(depositor); 

@@ -24,11 +24,11 @@ contract Depositor is Ownable {
     constructor(
                 address _depositReceipt,
                 address _AMMToken, 
-                address _gauge,
-                address _router,
-                address _token0,
-                address _token1,
-                bool _stable
+                address _gauge
+                //address _router,
+                //address _token0,
+                //address _token1,
+                //bool _stable
                 ){
 
         AMMToken = IERC20(_AMMToken);
@@ -60,11 +60,29 @@ contract Depositor is Ownable {
     /*
     * @notice used to withdraw percentageSplit of specified NFT worth of pooledTokens.
     */
-    function partialWithdrawFromGauge(uint256 _NFTId, uint256 percentageSplit, address[] memory _tokens) external {
+    function partialWithdrawFromGauge(uint256 _NFTId, uint256 percentageSplit, address[] memory _tokens) public {
         uint256 newNFTId = depositReceipt.split(_NFTId, percentageSplit);
         //then call withdrawFromGauge on portion removing.
         withdrawFromGauge(newNFTId, _tokens);
-    }   
+    }  
+
+    function multiWithdrawFromGauge(
+        uint256[] memory _NFTIds, 
+        bool usingPartial,
+        uint256 _partialNFTId, 
+        uint256 _percentageSplit, 
+        address[] memory _tokens
+        ) external {
+
+        uint256 length = _NFTIds.length;
+        for (uint256 i = 0; i < length; i++ ){
+            withdrawFromGauge(_NFTIds[i], _tokens);
+        }
+        if(usingPartial){
+            partialWithdrawFromGauge(_partialNFTId, _percentageSplit, _tokens);
+        }
+        
+    }
 
     /*
     * @notice burns the NFT related to the ID and withdraws the owed pooledtokens from Gauge and sends to user.  

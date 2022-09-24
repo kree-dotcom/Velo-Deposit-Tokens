@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 
-describe("Templater contract", function () {
+describe.only("Templater contract", function () {
     const provider = ethers.provider;
     
 
@@ -11,9 +11,11 @@ describe("Templater contract", function () {
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
         Templater = await ethers.getContractFactory("Templater")
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
+        PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
 
         tokenA = await TESTERC20Token.deploy("TokenA", "TA")
         tokenB = await TESTERC20Token.deploy("TokenB", "TB")
+        priceOracle = await PriceOracle.deploy()
 
         templater = await Templater.deploy(
             tokenA.address,
@@ -21,7 +23,8 @@ describe("Templater contract", function () {
             true,
             alice.address,
             owner.address,
-            bob.address)
+            bob.address,
+            priceOracle.address)
 
 
     })

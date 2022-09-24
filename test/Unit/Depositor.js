@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 
-describe("Depositor contract", function () {
+describe.only("Depositor contract", function () {
     const provider = ethers.provider;
     const stable = true;
 
@@ -14,26 +14,34 @@ describe("Depositor contract", function () {
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
         DepositReceipt = await ethers.getContractFactory("DepositReceipt")
         TESTRouter = await ethers.getContractFactory("TESTRouter")
+        PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
+
         
 
-        depositReceipt = await DepositReceipt.deploy(
-            "Deposit_Receipt",
-            "DR")
+            
         AMMToken = await TESTERC20Token.deploy("vAMM-token", "AMM")
         token0 = await TESTERC20Token.deploy("token0", "T0")
-        token1 = await TESTERC20Token.deploy("token1", "T1")
+        //one token must be USDC in this version
+        token1 = await TESTERC20Token.deploy("token1", "USDC")
         gauge = await Gauge.deploy(AMMToken.address)
         router = await TESTRouter.deploy()
+        priceOracle = await PriceOracle.deploy()
         
+        depositReceipt = await DepositReceipt.deploy(
+            "Deposit_Receipt",
+            "DR",
+            router.address,
+            token0.address,
+            token1.address,
+            true,
+            priceOracle.address
+            )
 
         depositor = await Depositor.connect(owner).deploy(
             depositReceipt.address,
             AMMToken.address,
-            gauge.address,
-            router.address,
-            token0.address,
-            token1.address,
-            stable)
+            gauge.address
+            )
         
         depositReceipt.connect(owner).addMinter(depositor.address)
 
@@ -54,10 +62,6 @@ describe("Depositor contract", function () {
             expect( await depositor.depositReceipt() ).to.equal(depositReceipt.address)
             expect( await depositor.gauge() ).to.equal(gauge.address)
             expect( await depositor.AMMToken() ).to.equal(AMMToken.address)
-            expect( await depositor.router() ).to.equal(router.address)
-            expect( await depositor.token0() ).to.equal(token0.address)
-            expect( await depositor.token1() ).to.equal(token1.address)
-            expect( await depositor.stable() ).to.equal(stable)
             
         });
        
@@ -160,6 +164,175 @@ describe("Depositor contract", function () {
         
         
     });
+
+    describe("partialWithdrawFromGauge", function (){
+        const NFT_id = 1  
+        const amount = ethers.utils.parseEther('353')  
+        
+        it("Should withdraw partially from gauge with right user call", async function (){
+            //setup deposit first
+              
+            AMMToken.approve(depositor.address, amount)
+            await depositor.connect(owner).depositToGauge(amount)
+            rewards_address = await gauge.FakeRewards()
+
+            before_NFT_owner = await depositReceipt.ownerOf(NFT_id)
+            expect(before_NFT_owner).to.equal(owner.address)
+            before_owner_tokens = await AMMToken.balanceOf(owner.address)
+
+            await depositReceipt.connect(owner).approve(depositor.address, NFT_id)
+            let fifty_one_percent = ethers.utils.parseEther('0.51')  
+            let hundred_percent = ethers.utils.parseEther('1')
+            await depositor.connect(owner).partialWithdrawFromGauge(NFT_id, fifty_one_percent, [rewards_address])
+
+            //after transaction checks
+            after_owner_NFT_count = await depositReceipt.balanceOf(owner.address)
+            expect(after_owner_NFT_count).to.equal(1)
+            after_NFT_owner = await depositReceipt.ownerOf(NFT_id)
+            expect(after_NFT_owner).to.equal(owner.address)
+            //new NFT created by split should have been burned
+            await expect(depositReceipt.ownerOf(NFT_id+1)).to.be.revertedWith("ERC721: invalid token ID")
+            
+
+            after_owner_tokens = await AMMToken.balanceOf(owner.address)
+            expect(after_owner_tokens).to.equal(before_owner_tokens.add(amount.mul(fifty_one_percent).div(hundred_percent)))
+            
+        });
+
+        it("Should fail if user lacks depositReceipts", async function (){
+             //setup deposit first     
+             AMMToken.approve(depositor.address, amount)
+             await depositor.connect(owner).depositToGauge(amount)
+             rewards_address = await gauge.FakeRewards()
+ 
+             before_NFT_owner = await depositReceipt.ownerOf(NFT_id)
+             expect(before_NFT_owner).to.equal(owner.address)
+             
+            //overloaded function so different calling structure
+             await depositReceipt["safeTransferFrom(address,address,uint256)"](owner.address, alice.address, NFT_id)
+             after_NFT_owner = await depositReceipt.ownerOf(NFT_id)
+             expect(after_NFT_owner).to.equal(alice.address)
+             await expect(depositor.connect(owner).partialWithdrawFromGauge(NFT_id, 1, [rewards_address])).to.be.revertedWith("ERC721: caller is not token owner or approved")
+ 
+        });
+
+        it("Should fail if called by wrong user ", async function (){
+            rewards_address = await gauge.FakeRewards()
+            //setup deposit first
+              
+            AMMToken.approve(depositor.address, amount)
+            await depositor.connect(owner).depositToGauge(amount)
+
+            await expect(depositor.connect(bob).partialWithdrawFromGauge(NFT_id, 1, [rewards_address])).to.be.revertedWith('ERC721: caller is not token owner or approved')
+            
+        });
+
+        
+        
+    });
+
+    describe("multiWithdrawFromGauge", function (){
+        const NFT_ids = [1,2,3]  
+        const amount = ethers.utils.parseEther('363')  
+        let fifty_one_percent = ethers.utils.parseEther('0.51')  
+        let hundred_percent = ethers.utils.parseEther('1') 
+        
+        it.only("Should withdraw several NFTs from gauge with right user call", async function (){
+            //setup deposit first
+              
+            AMMToken.approve(depositor.address, amount)
+            await depositor.connect(owner).depositToGauge(amount.div(3))
+            await depositor.connect(owner).depositToGauge(amount.div(3))
+            await depositor.connect(owner).depositToGauge(amount.div(3))
+            rewards_address = await gauge.FakeRewards()
+
+            before_NFT_1_owner = await depositReceipt.ownerOf(NFT_ids[0])
+            before_NFT_2_owner = await depositReceipt.ownerOf(NFT_ids[1])
+            before_NFT_3_owner = await depositReceipt.ownerOf(NFT_ids[2])
+            expect(before_NFT_1_owner).to.equal(owner.address)
+            expect(before_NFT_2_owner).to.equal(owner.address)
+            expect(before_NFT_3_owner).to.equal(owner.address)
+
+            before_owner_tokens = await AMMToken.balanceOf(owner.address)
+
+            await depositReceipt.connect(owner).approve(depositor.address, NFT_ids[0])
+            await depositReceipt.connect(owner).approve(depositor.address, NFT_ids[1])
+            await depositReceipt.connect(owner).approve(depositor.address, NFT_ids[2])
+
+            
+            await depositor.connect(owner).multiWithdrawFromGauge(
+                [1,2],
+                true, //using partial withdraw
+                3, //partial NFT id
+                fifty_one_percent, //partial NFT withdraw percentage
+                [rewards_address]
+                )
+
+            //after transaction checks
+            after_owner_NFT_count = await depositReceipt.balanceOf(owner.address)
+            expect(after_owner_NFT_count).to.equal(1)
+            after_NFT_owner = await depositReceipt.ownerOf(NFT_ids[2])
+            expect(after_NFT_owner).to.equal(owner.address)
+            //new NFT created by split should have been burned
+            await expect(depositReceipt.ownerOf(NFT_ids[2]+1)).to.be.revertedWith("ERC721: invalid token ID")
+            
+
+            after_owner_tokens = await AMMToken.balanceOf(owner.address)
+            let expected_amount = (amount.div(3).mul(2)).add(amount.mul(fifty_one_percent).div(hundred_percent))
+            let error = after_owner_tokens.div(5000) // 0.05% acceptable error
+            expect(after_owner_tokens).to.be.closeTo(before_owner_tokens.add(expected_amount), error)
+            
+        });
+
+        it("Should fail if user lacks all depositReceipts", async function (){
+             //setup deposit first     
+             AMMToken.approve(depositor.address, amount)
+             await depositor.connect(owner).depositToGauge(amount.div(3))
+             await depositor.connect(owner).depositToGauge(amount.div(3))
+             await depositor.connect(owner).depositToGauge(amount.div(3))
+             rewards_address = await gauge.FakeRewards()
+ 
+             before_NFT_owner = await depositReceipt.ownerOf(NFT_ids[0])
+             expect(before_NFT_owner).to.equal(owner.address)
+             
+            //overloaded function so different calling structure
+             await depositReceipt["safeTransferFrom(address,address,uint256)"](owner.address, alice.address, NFT_ids[0])
+             after_NFT_owner = await depositReceipt.ownerOf(NFT_ids[0])
+             expect(after_NFT_owner).to.equal(alice.address)
+
+             await expect(depositor.connect(owner).multiWithdrawFromGauge(
+                [1,2],
+                true, //using partial withdraw
+                3, //partial NFT id
+                fifty_one_percent, //partial NFT withdraw percentage
+                [rewards_address]
+                )).to.be.revertedWith("ERC721: caller is not token owner or approved")
+ 
+        });
+
+        it("Should fail if called by wrong user ", async function (){
+            rewards_address = await gauge.FakeRewards()
+            //setup deposit first
+              
+            AMMToken.approve(depositor.address, amount)
+            await depositor.connect(owner).depositToGauge(amount.div(3))
+            await depositor.connect(owner).depositToGauge(amount.div(3))
+             await depositor.connect(owner).depositToGauge(amount.div(3))
+
+            await expect(depositor.connect(owner).multiWithdrawFromGauge(
+                [1,2],
+                true, //using partial withdraw
+                3, //partial NFT id
+                fifty_one_percent, //partial NFT withdraw percentage
+                [rewards_address]
+                )).to.be.revertedWith('ERC721: caller is not token owner or approved')
+            
+        });
+
+        
+        
+    });
+
 
     describe("claimRewards", function (){
 

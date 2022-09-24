@@ -26,7 +26,8 @@ describe("Integration OP Mainnet: Depositor contract", function () {
     Velo = addresses.optimism.VELO
     AMMToken_address = addresses.optimism.AMMToken
     gauge_address = addresses.optimism.Gauge
-    router = addresses.optimism.Router
+    router_address = addresses.optimism.Router
+    pricefeed_address = addresses.optimism.Chainlink_SUSD_Feed 
     AMMToken_donor = addresses.optimism.AMMToken_Donor
     const ZERO_ADDRESS = ethers.constants.AddressZero
 
@@ -40,20 +41,23 @@ describe("Integration OP Mainnet: Depositor contract", function () {
         Depositor = await ethers.getContractFactory("Depositor")
         DepositReceipt = await ethers.getContractFactory("DepositReceipt")
         
-
+        
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
-            "DR")
-        
+            "DR",
+            router_address,
+            tokenA,
+            tokenB, 
+            true,
+            pricefeed_address
+            )
+            
+    
 
         depositor = await Depositor.connect(owner).deploy(
             depositReceipt.address,
             AMMToken.address,
             gauge.address,
-            router,
-            tokenA,
-            tokenB,
-            stable 
             )
         
         depositReceipt.connect(owner).addMinter(depositor.address)
@@ -80,10 +84,6 @@ describe("Integration OP Mainnet: Depositor contract", function () {
             expect( await depositor.depositReceipt() ).to.equal(depositReceipt.address)
             expect( await depositor.gauge() ).to.equal(gauge.address)
             expect( await depositor.AMMToken() ).to.equal(AMMToken.address)
-            expect( await depositor.router() ).to.equal(router)
-            expect( await depositor.token0() ).to.equal(tokenA)
-            expect( await depositor.token1() ).to.equal(tokenB)
-            expect( await depositor.stable() ).to.equal(stable)
             
         });
        
@@ -235,6 +235,54 @@ describe("Integration OP Mainnet: Depositor contract", function () {
             
         });
 
+        it("Should still have pending rewards after withdrawal from gauge", async function (){
+            this.timeout(100000);
+            const NFT_id = 1;
+             //setup deposit first
+             const amount = ethers.utils.parseEther('0.00001')      
+             await AMMToken.connect(owner).approve(depositor.address, amount.mul(2))
+             await depositor.connect(owner).depositToGauge(amount)
+            //set up already deployed rewards token contract
+            velo_address = addresses.optimism.VELO
+            velo = new ethers.Contract(velo_address, ABIs.ERC20, provider);
+
+            //state checks prior to actions
+            before_owner_rewards = await velo.connect(owner).balanceOf(owner.address)
+            expect(before_owner_rewards).to.equal(0)
+            before_depositor_rewards = await velo.balanceOf(depositor.address)
+            expect(before_depositor_rewards).to.equal(0)
+
+            //skip time to accumulate rewards
+            helpers.timeSkip(1000)
+            //trigger rewards to accumulate by interacting with gauge
+            await depositor.connect(owner).depositToGauge(amount)
+            //check accumulated rewards
+            let expected_rewards = await depositor.viewPendingRewards(velo.address)
+            let gauge_rewards = await gauge.earned(velo.address, depositor.address)
+            expect(expected_rewards).to.equal(gauge_rewards)            
+
+            //withdraw all funds from depositor
+            await depositReceipt.approve(depositor.address, NFT_id)
+            await depositor.connect(owner).withdrawFromGauge(NFT_id, [])
+            //assert claimable rewards haven't changed due to withdraw
+            let expected_rewards_after = await depositor.viewPendingRewards(velo.address)
+            let gauge_rewards_after = await gauge.earned(velo.address, depositor.address)
+
+            expect(expected_rewards_after).to.be.greaterThan(expected_rewards)
+            expect(gauge_rewards_after).to.be.greaterThan(gauge_rewards)
+
+            //claim rewards
+
+            await depositor.connect(owner).claimRewards([velo.address])
+        
+            after_owner_rewards = await velo.balanceOf(owner.address)
+            let error = after_owner_rewards.div(33) //margin of error 3% as earned is only an estimate
+            expect(after_owner_rewards).to.be.closeTo(expected_rewards_after,error)
+            //no rewards should be claimable in gauge for depositor owner
+            let leftover_rewards = await depositor.viewPendingRewards(velo.address)
+            expect(leftover_rewards).to.equal(0)
+        });
+
         
         
     });
@@ -274,6 +322,10 @@ describe("Integration OP Mainnet: Depositor contract", function () {
             
             
         });
+
+        
+
+
 
     });
 })
