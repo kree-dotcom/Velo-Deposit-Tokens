@@ -19,9 +19,9 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");  
 
     uint256 private immutable oracleBase;
-    uint256 private HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
-    uint256 private BASE = 1 ether; //division base
-    uint256 private SCALE_SHIFT = 1e12; //brings USDC 6.d.p up to 18d.p. standard
+    uint256 private constant HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
+    uint256 private constant BASE = 1 ether; //division base
+    uint256 private constant SCALE_SHIFT = 1e12; //brings USDC 6.d.p up to 18d.p. standard
     //Mapping from NFTid to number of associated poolTokens
     mapping(uint256 => uint256) public pooledTokens;
     //Mapping from NFTid to original depositor contract(where tokens can be redeemed by anyone)
@@ -49,6 +49,9 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
     event NFTSplit(uint256 oldNFTId, uint256 newNFTId);
     event NFTDataModified(uint256 NFTId, uint256 pastPooledTokens, uint256 newPooledTokens);
 
+    /**
+    *    @notice Zero address checks done in Templater that generates DepositReceipt and so not needed here.
+    **/
     constructor(string memory _name, 
                 string memory _symbol, 
                 address _router, 
@@ -176,6 +179,7 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
     }
     /**
      * @notice Pass through function that converts pooledTokens to underlying asset amounts. 
+     * @param _liquidity amount of pooledTokens you want to find the underlying liquidity for.
      */
     function viewQuoteRemoveLiquidity(uint256 _liquidity) public view returns( uint256, uint256 ){
         uint256 token0Amount;
@@ -201,6 +205,7 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
             uint timeStamp,
             /*uint80 answeredInRound*/
         ) = priceFeed.latestRoundData();
+        //check for Chainlink oracle deviancies, force a revert if any are present. Helps prevent a LUNA like issue
         require(signedPrice > 0, "Negative Oracle Price");
         require(timeStamp >= block.timestamp - HEARTBEAT_TIME , "Stale pricefeed");
         require(signedPrice < maxPrice, "Upper price bound breached");

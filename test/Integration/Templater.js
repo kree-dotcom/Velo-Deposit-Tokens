@@ -3,7 +3,7 @@ const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 const { addresses } = require("../helpers/deployedAddresses.js")
 
-describe("Integration OP Mainnet: Templater contract", function () {
+describe.only("Integration OP Mainnet: Templater contract", function () {
     const provider = ethers.provider;
     
 
@@ -11,12 +11,11 @@ describe("Integration OP Mainnet: Templater contract", function () {
         
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
         Templater = await ethers.getContractFactory("Templater")
-        //TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
 
         tokenA = addresses.optimism.USDC //USDC
         tokenB = addresses.optimism.sUSD //sUSD
         AMMToken_address = addresses.optimism.AMMToken
-        gauge = addresses.optimism.Gauge
+        voter = addresses.optimism.Voter
         router = addresses.optimism.Router
         pricefeed_address = addresses.optimism.Chainlink_SUSD_Feed
 
@@ -25,7 +24,7 @@ describe("Integration OP Mainnet: Templater contract", function () {
             tokenB,
             true,
             AMMToken_address,
-            gauge,
+            voter,
             router,
             pricefeed_address
             )

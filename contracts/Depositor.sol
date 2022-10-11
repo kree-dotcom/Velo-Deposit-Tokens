@@ -15,20 +15,22 @@ contract Depositor is Ownable {
 
     using SafeERC20 for IERC20; 
 
-    DepositReceipt public depositReceipt;
-    IERC20 public AMMToken;
-    IGauge public gauge;
+    DepositReceipt public immutable depositReceipt;
+    IERC20 public immutable AMMToken;
+    IGauge public immutable gauge;
     
     
-
+    /**
+    *    @notice Used to deposit pooledTokens to the Gauge and mint a new DepositReceipt
+    *    @param _depositReceipt address of the related depositReceipt so we can mint and burn new DepositReceipt NFTs
+    *    @param _AMMToken the associate pooledToken we transfer to the Gauge on behalf of the user.
+    *    @param _gauge the related gauge for this pooledToken, where we deposit/withdraw pooledTokens and claim rewards from.
+    *    
+    **/
     constructor(
                 address _depositReceipt,
                 address _AMMToken, 
                 address _gauge
-                //address _router,
-                //address _token0,
-                //address _token1,
-                //bool _stable
                 ){
 
         AMMToken = IERC20(_AMMToken);
@@ -47,69 +49,108 @@ contract Depositor is Ownable {
     }
 
 
-
+    /**
+    *    @notice Used to deposit pooledTokens to the Gauge and mint a new DepositReceipt
+    *    @param _amount amount of pooledTokens to deposit.
+    *    @return NFTId the Id relating to the newly minte DepositReceipt
+    *    
+    **/
     function depositToGauge(uint256 _amount) onlyOwner() external returns(uint256){
-        bool success = AMMToken.transferFrom(msg.sender, address(this), _amount);
-        require(success, "TransferFrom failed");
+         //AMMToken adheres to ERC20 spec meaning it reverts on failure, no need to check return
+        //slither-disable-next-line unchecked-transfer
+        AMMToken.transferFrom(msg.sender, address(this), _amount);
+
         AMMToken.safeIncreaseAllowance(address(gauge), _amount);
+        //we are not attaching a veNFT to the deposit so the 2nd arg is always 0.
         gauge.deposit(_amount, 0);
         uint256 NFTId = depositReceipt.safeMint(_amount);
+        //safeMint sends the minted DepositReceipt to Depositor so now we forward it to the user.
         depositReceipt.safeTransferFrom(address(this), msg.sender, NFTId);
         return(NFTId);
     }
-    /*
-    * @notice used to withdraw percentageSplit of specified NFT worth of pooledTokens.
-    */
-    function partialWithdrawFromGauge(uint256 _NFTId, uint256 percentageSplit, address[] memory _tokens) public {
-        uint256 newNFTId = depositReceipt.split(_NFTId, percentageSplit);
+
+    /**
+    *    @notice used to withdraw percentageSplit of specified DepositReceipt worth of pooledTokens.
+    *    @param _NFTId the ID sof the DepositReceipt you wish to reclaim some of the pooledTokens of.
+    *    @param _percentageSplit the percentage of the pooled tokens to be withdrawn , 100% is 1e18.
+    *    @param _tokens  array of reward tokens the user wishes to claim at the same time, can be empty.
+    *    
+    **/
+    function partialWithdrawFromGauge(uint256 _NFTId, uint256 _percentageSplit, address[] memory _tokens) public {
+        uint256 newNFTId = depositReceipt.split(_NFTId, _percentageSplit);
         //then call withdrawFromGauge on portion removing.
         withdrawFromGauge(newNFTId, _tokens);
     }  
 
+    /**
+    *    @notice Wrapper around partialWithdrawFromGauge and withdrawFromGauge to improve user experience.
+    *    @param _NFTIds the ID sof the DepositReceipts you wish to burn and reclaim the pooledTokens relating to
+    *    @param _usingPartial Set to true if you wish to withdraw only part of one DepositReceipt
+    *    @param _partialNFTId the DepositReceipt Id of which you only wish to withdraw less than 100% of its pooled tokens
+    *    @param _percentageSplit if a partial withdrawal is being used, the percentage of the pooled tokens to be withdrawn , 100% is 1e18.
+    *    @param _tokens  array of reward tokens the user wishes to claim at the same time, can be empty.
+    *    
+    **/
     function multiWithdrawFromGauge(
         uint256[] memory _NFTIds, 
-        bool usingPartial,
+        bool _usingPartial,
         uint256 _partialNFTId, 
         uint256 _percentageSplit, 
         address[] memory _tokens
         ) external {
 
+        //here we use external calls in a loop, if gas is excessive withdrawFromGauge and partialWithdrawFromGauge can be called directly preventing DOS.
         uint256 length = _NFTIds.length;
         for (uint256 i = 0; i < length; i++ ){
             withdrawFromGauge(_NFTIds[i], _tokens);
         }
-        if(usingPartial){
+        if(_usingPartial){
             partialWithdrawFromGauge(_partialNFTId, _percentageSplit, _tokens);
         }
         
     }
 
-    /*
-    * @notice burns the NFT related to the ID and withdraws the owed pooledtokens from Gauge and sends to user.  
-    */
+    /**
+    *    @notice burns the NFT related to the ID and withdraws the owed pooledtokens from Gauge and sends to user.  
+    *    @param _NFTId the ID of the DepositReceipt you wish to burn and reclaim the pooledTokens relating to
+    *    @param _tokens  array of reward tokens the user wishes to claim at the same time, can be empty.
+    *    
+    **/
     function withdrawFromGauge(uint256 _NFTId, address[] memory _tokens)  public  {
         uint256 amount = depositReceipt.pooledTokens(_NFTId);
         depositReceipt.burn(_NFTId);
         gauge.getReward(address(this), _tokens);
         gauge.withdraw(amount);
+        //AMMToken adheres to ERC20 spec meaning it reverts on failure, no need to check return
+        //slither-disable-next-line unchecked-transfer
         AMMToken.transfer(msg.sender, amount);
     }
 
-    //think about manipulation with fake reward tokens, shouldn't be an issue due to onlyOwner but verify.
-    //think about reverts here, i.e. if we call getReward when can it revert?
-    //what happens if one reward token isn't transferable, can we skip it?
-    function claimRewards( address[] memory _tokens) onlyOwner() public {
+    /**
+    *    @notice Function to claim accrued rewards from gauge and send to Depositor owner who must be the caller.
+    *    @notice because we call the gauge then transfer to the user there should never be reward tokens leftover in Depositor
+    *            but if there are you can call again as gauge will succeed even if it has nothing to send the Depositor
+    *    @param _tokens  array of reward tokens the user wishes to claim. 
+    *    
+    **/
+    function claimRewards( address[] memory _tokens) onlyOwner() external {
         require(_tokens.length > 0, "Empty tokens array");
         gauge.getReward(address(this), _tokens);
         //some logic here to withdraw each of the tokens?
         uint256 length =  _tokens.length;
         for (uint i = 0; i < length; i++) {
             uint256 balance = IERC20(_tokens[i]).balanceOf(address(this));
-            IERC20(_tokens[i]).transfer(msg.sender, balance);
+            // using SafeERC20 in case reward token returns false on failure
+            IERC20(_tokens[i]).safeTransfer(msg.sender, balance);
         }
 
     }
 
+    /**
+    *    @notice Function to check the quantity of _token rewards awaiting being claimed by claimRewards()
+    *    @param _token  reward tokens the user wishes to check the pending balance of in the gauge.
+    *    
+    **/
     function viewPendingRewards(address _token) external view returns(uint256){
         //passthrough to Gauge
         return gauge.earned(_token, address(this)); 

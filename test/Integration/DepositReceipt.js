@@ -4,7 +4,7 @@ const { helpers } = require("../helpers/testHelpers.js")
 const { addresses } = require("../helpers/deployedAddresses.js")
 const { ABIs } = require("../helpers/abi.js")
 
-describe("Integration OP Mainnet: DepositReceipt contract", function () {
+describe.only("Integration OP Mainnet: DepositReceipt contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
@@ -145,7 +145,7 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
             expect( await depositReceipt.pooledTokens(nft_id)).to.equal(amount)
         
             //call split here with wrong user
-            await expect(depositReceipt.connect(owner).split(nft_id, split)).to.be.revertedWith('only the owner can split their NFT')
+            await expect(depositReceipt.connect(owner).split(nft_id, split)).to.be.revertedWith('ERC721: caller is not token owner or approved')
 
             //call split with right user
             await expect(depositReceipt.connect(bob).split(nft_id, split)).to.emit(depositReceipt, "NFTSplit").withArgs(nft_id, new_nft_id)
