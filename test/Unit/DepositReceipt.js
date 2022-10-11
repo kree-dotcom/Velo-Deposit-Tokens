@@ -152,7 +152,7 @@ describe.only("DepositReceipt contract", function () {
             expect( await depositReceipt.pooledTokens(nft_id)).to.equal(amount)
         
             //call split here with wrong user
-            await expect(depositReceipt.connect(owner).split(nft_id, split)).to.be.revertedWith('only the owner can split their NFT')
+            await expect(depositReceipt.connect(owner).split(nft_id, split)).to.be.revertedWith('ERC721: caller is not token owner or approved')
 
             //call split with right user
             await expect(depositReceipt.connect(bob).split(nft_id, split)).to.emit(depositReceipt, "NFTSplit").withArgs(nft_id, new_nft_id)
@@ -228,24 +228,24 @@ describe.only("DepositReceipt contract", function () {
             
         });
 
-        it.only("Should revert if Price is outside of boundaries", async function (){
+        it("Should revert if Price is outside of boundaries", async function (){
             too_high_price = 1000000000000
             too_low_price = 100
             negative_price = -1
-            priceOracle.setPrice(too_high_price)
+            await priceOracle.setPrice(too_high_price)
             const liquidity = ethers.utils.parseEther('1'); 
 
             await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Upper price bound breached");
-            priceOracle.setPrice(too_low_price)
+            await priceOracle.setPrice(too_low_price)
             await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Lower price bound breached");
-            priceOracle.setPrice(negative_price)
+            await priceOracle.setPrice(negative_price)
             await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Negative Oracle Price");
             
         });
 
         it("Should revert if Price update timestamp is stale", async function (){
             stale_timestamp = 1000000
-            priceOracle.setTimestamp(stale_timestamp)
+            await priceOracle.setTimestamp(stale_timestamp)
             const liquidity = ethers.utils.parseEther('1'); 
 
             await expect(depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Stale pricefeed");

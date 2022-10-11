@@ -12,17 +12,19 @@ describe.only("Templater contract", function () {
         Templater = await ethers.getContractFactory("Templater")
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
         PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
+        TESTVoter = await ethers.getContractFactory("TESTVoter")
 
         tokenA = await TESTERC20Token.deploy("TokenA", "TA")
         tokenB = await TESTERC20Token.deploy("TokenB", "TB")
         priceOracle = await PriceOracle.deploy()
+        voter = await TESTVoter.deploy()
 
         templater = await Templater.deploy(
             tokenA.address,
             tokenB.address,
             true,
             alice.address,
-            owner.address,
+            voter.address,
             bob.address,
             priceOracle.address)
 

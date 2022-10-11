@@ -237,7 +237,7 @@ describe.only("Depositor contract", function () {
         let fifty_one_percent = ethers.utils.parseEther('0.51')  
         let hundred_percent = ethers.utils.parseEther('1') 
         
-        it.only("Should withdraw several NFTs from gauge with right user call", async function (){
+        it("Should withdraw several NFTs from gauge with right user call", async function (){
             //setup deposit first
               
             AMMToken.approve(depositor.address, amount)
