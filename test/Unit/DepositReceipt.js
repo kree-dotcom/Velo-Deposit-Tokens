@@ -3,7 +3,7 @@ const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 const { addresses } = require("../helpers/deployedAddresses.js")
 
-describe.only("DepositReceipt contract", function () {
+describe("DepositReceipt contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"))
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"))
@@ -130,6 +130,7 @@ describe.only("DepositReceipt contract", function () {
             let nft_id = 1
             expect( await depositReceipt.ownerOf(nft_id)).to.equal(bob.address)
             expect( await depositReceipt.pooledTokens(nft_id)).to.equal(amount)
+            expect( await depositReceipt.relatedDepositor(nft_id)).to.equal(bob.address)
     
             await expect(depositReceipt.connect(alice).safeMint(1)).to.be.revertedWith("Caller is not a minter")
 
@@ -150,6 +151,7 @@ describe.only("DepositReceipt contract", function () {
             let split = ethers.utils.parseEther('0.53'); //53%
             expect( await depositReceipt.ownerOf(nft_id)).to.equal(bob.address)
             expect( await depositReceipt.pooledTokens(nft_id)).to.equal(amount)
+            let original_depositor = await depositReceipt.relatedDepositor(nft_id)
         
             //call split here with wrong user
             await expect(depositReceipt.connect(owner).split(nft_id, split)).to.be.revertedWith('ERC721: caller is not token owner or approved')
@@ -160,11 +162,15 @@ describe.only("DepositReceipt contract", function () {
 
             //check new NFT details
             expect( await depositReceipt.ownerOf(new_nft_id)).to.equal(bob.address)
+            expect( await depositReceipt.relatedDepositor(new_nft_id)).to.equal(original_depositor)
             let new_pooled_tokens = amount.mul(split).div(BASE)
             expect( await depositReceipt.pooledTokens(new_nft_id)).to.equal(new_pooled_tokens)
+
             //check old NFT details
             expect( await depositReceipt.ownerOf(nft_id)).to.equal(bob.address)
             expect( await depositReceipt.pooledTokens(nft_id)).to.equal(amount.sub(new_pooled_tokens))
+            //depositor should not have changed
+            expect( await depositReceipt.relatedDepositor(nft_id)).to.equal(original_depositor)
             
 
         });

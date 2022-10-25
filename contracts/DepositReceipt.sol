@@ -133,7 +133,7 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
     uint256 existingPooledTokens = pooledTokens[_NFTId];
     uint256 newPooledTokens = (existingPooledTokens * _percentageSplit)/ BASE;
     pooledTokens[_NFTId] = existingPooledTokens - newPooledTokens;
-    uint256 newNFTId = _mintNewNFT(newPooledTokens);
+    uint256 newNFTId = _mintNewNFT(newPooledTokens, relatedDepositor[_NFTId]);
     
 
     emit NFTSplit(_NFTId, newNFTId);
@@ -160,19 +160,20 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
       * @param _pooledTokenAmount amount of pooled tokens to be associated with NFT
      **/
     function safeMint( uint _pooledTokenAmount) external onlyMinter returns(uint256){
-        return (_mintNewNFT(_pooledTokenAmount));
+        return (_mintNewNFT(_pooledTokenAmount, msg.sender));
     }
 
     /**
       * @notice Only callable by Minters via safeMint or  by split()
       * @dev Mints new NFT with '_pooledTokenAmount' of pooledTokens associated with it and emits Transfer event
       * @param _pooledTokenAmount amount of pooled tokens to be associated with NFT
+      * @param _depositor the address to be recorded as the related depositor where the pooledTokens can be withdrawn from
      **/
-    function _mintNewNFT( uint _pooledTokenAmount) internal returns(uint256){
+    function _mintNewNFT( uint _pooledTokenAmount, address _depositor) internal returns(uint256){
         uint256 NFTId = currentLastId;
         currentLastId += 1;
         pooledTokens[NFTId] = _pooledTokenAmount;
-        relatedDepositor[NFTId] = msg.sender; 
+        relatedDepositor[NFTId] = _depositor; 
         _safeMint( msg.sender, NFTId);
         return(NFTId);
 

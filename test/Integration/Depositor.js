@@ -18,7 +18,7 @@ async function impersonateForToken(provider, receiver, ERC20, donerAddress, amou
     
   }
 
-describe.only("Integration OP Mainnet: Depositor contract", function () {
+describe("Integration OP Mainnet: Depositor contract", function () {
     const provider = ethers.provider;
     const stable = true;
     tokenA = addresses.optimism.USDC //USDC
@@ -105,9 +105,11 @@ describe.only("Integration OP Mainnet: Depositor contract", function () {
             after_gauge_tokens = await AMMToken.balanceOf(gauge.address)
             after_owner_tokens = await AMMToken.balanceOf(owner.address)
             after_receipt_owner = await depositReceipt.ownerOf(nft_id)
+
             expect(after_gauge_tokens).to.equal(before_gauge_tokens.add(amount))
             expect(after_owner_tokens).to.equal(before_owner_tokens.sub(amount))
             expect(after_receipt_owner).to.equal(owner.address)
+            expect( await depositReceipt.relatedDepositor(nft_id)).to.equal(depositor.address)
 
             
         });
