@@ -3,7 +3,7 @@ const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 const { addresses } = require("../helpers/deployedAddresses.js")
 
-describe("DepositReceipt contract", function () {
+describe("Unit tests: DepositReceipt contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"))
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"))
@@ -114,6 +114,19 @@ describe("DepositReceipt contract", function () {
         it("should not let Admin role addresses mint", async function (){
             expect( await depositReceipt.hasRole(MINTER_ROLE, owner.address) ).to.equal(false)
             await expect(depositReceipt.connect(owner).safeMint(1)).to.be.revertedWith("Caller is not a minter")
+        });
+      });
+
+    describe("supportsInterface", function (){
+        it("Return true only when given the correct interface ID as an arguement by anyone", async function (){
+            let interface_id = [255, 255, 255, 255]
+            expect( await depositReceipt.connect(alice).supportsInterface(interface_id) ).to.equal(false)
+
+            //too lazy to calculate, this is the correct byte string taken from here
+            // https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified
+            interface_id = [01, 255, 201, 167] //0x01ffc9a7 (EIP165 interface)
+            expect( await depositReceipt.connect(alice).supportsInterface(interface_id) ).to.equal(true)
+            
         });
       });
 

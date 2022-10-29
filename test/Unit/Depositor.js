@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 
-describe.only("Depositor contract", function () {
+describe("Depositor contract", function () {
     const provider = ethers.provider;
     const stable = true;
 

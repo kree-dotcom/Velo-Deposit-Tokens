@@ -136,7 +136,7 @@ contract Depositor is Ownable {
     function claimRewards( address[] memory _tokens) onlyOwner() external {
         require(_tokens.length > 0, "Empty tokens array");
         gauge.getReward(address(this), _tokens);
-        //some logic here to withdraw each of the tokens?
+        
         uint256 length =  _tokens.length;
         for (uint i = 0; i < length; i++) {
             uint256 balance = IERC20(_tokens[i]).balanceOf(address(this));

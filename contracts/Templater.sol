@@ -49,6 +49,7 @@ contract Templater {
         require( _token1 != ZERO_ADDRESS, "Zero address used");
         require( _AMMToken != ZERO_ADDRESS, "Zero address used");
         require( _router != ZERO_ADDRESS, "Zero address used");
+        require( _voter != ZERO_ADDRESS, "Zero address used");
         require( _priceFeed != ZERO_ADDRESS, "Zero address used");
 
         string memory name;

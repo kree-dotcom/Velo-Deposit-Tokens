@@ -3,7 +3,7 @@ const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 const { addresses } = require("../helpers/deployedAddresses.js")
 
-describe.only("Integration OP Mainnet: Templater contract", function () {
+describe("Integration OP Mainnet: Templater contract", function () {
     const provider = ethers.provider;
     
 
