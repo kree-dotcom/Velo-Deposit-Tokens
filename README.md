@@ -25,15 +25,14 @@ Tests are a mixture of unit and integeration tests as is fit. To run the tests:
 - Connect API endpoints needed for integration testing using the .env file. See sample.env for details.
 - Run tests using yarn hardhat test
 
+
 Coverage is as follows:
 
----------------------|----------|----------|----------|----------|----------------|
 File                 |  % Stmts | % Branch |  % Funcs |  % Lines |Uncovered Lines |
 ---------------------|----------|----------|----------|----------|----------------|
  contracts/          |      100 |       98 |      100 |      100 |                |
   DepositReceipt.sol |      100 |      100 |      100 |      100 |                |
   Depositor.sol      |      100 |     87.5 |      100 |      100 |                |
   Templater.sol      |      100 |      100 |      100 |      100 |                |
----------------------|----------|----------|----------|----------|----------------|
 All files            |      100 |       98 |      100 |      100 |                |
----------------------|----------|----------|----------|----------|----------------|
+

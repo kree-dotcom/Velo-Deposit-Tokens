@@ -7,6 +7,7 @@ describe("Unit tests: DepositReceipt contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"))
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"))
+    const USDC = addresses.optimism.USDC
 
     before(async function () {
         
@@ -18,16 +19,20 @@ describe("Unit tests: DepositReceipt contract", function () {
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
 
         token1 = await TESTERC20Token.deploy("token1", "USDC")
+        token2 = await TESTERC20Token.deploy("token2", "TB")
+        token3 = await TESTERC20Token.deploy("token3", "TC")
         erc20_8DP = await TESTERC20Token8DP.deploy("8DPToken", "8DP")
         router = await Router.deploy()
         priceOracle = await PriceOracle.deploy()
+
+        
 
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
             "DR",
             router.address,
-            alice.address,
             token1.address,
+            token2.address,
             true,
             priceOracle.address
             )
@@ -37,7 +42,7 @@ describe("Unit tests: DepositReceipt contract", function () {
                 "Deposit_Receipt",
                 "DR",
                 router.address,
-                addresses.optimism.USDC,
+                USDC,
                 token1.address,
                 true,
                 priceOracle.address
@@ -57,51 +62,51 @@ describe("Unit tests: DepositReceipt contract", function () {
 
     describe("Constructor", function (){
         it("Should revert if neither token is USDC", async function (){
-            /*
-            expect( await DepositReceipt.deploy(
+            
+            await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
                 "DR",
                 router.address,
-                alice.address,
-                sUSD,
+                token3.address,
+                token2.address,
                 true,
                 price_feed.address
                 )).to.be.revertedWith("One token must be USDC")
 
-                expect( await DepositReceipt.deploy(
+            await expect(DepositReceipt.deploy(
                     "Deposit_Receipt",
                     "DR",
                     router.address,
-                    sUSD,
-                    alice.address,
+                    token2.address,
+                    token3.address,
                     true,
                     price_feed.address
                     )).to.be.revertedWith("One token must be USDC")
-                    */
+                    
         });
         it("should enforce the non-USDC token having 18d.p", async function (){
             //success case is handed by general set up
-            /*
-            expect( await DepositReceipt.deploy(
+            
+            await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
                 "DR",
                 router.address,
                 USDC,
-                erc20_8DP,
+                erc20_8DP.address,
                 true,
                 price_feed.address
                 )).to.be.revertedWith("Token does not have 18dp")
 
-                expect( await DepositReceipt.deploy(
-                    "Deposit_Receipt",
-                    "DR",
-                    router.address,
-                    erc20_8DP,
-                    USDC,
-                    true,
-                    price_feed.address
-                    )).to.be.revertedWith("Token does not have 18dp")
-                    */
+            await expect(DepositReceipt.deploy(
+                "Deposit_Receipt",
+                "DR",
+                router.address,
+                erc20_8DP.address,
+                USDC,
+                true,
+                price_feed.address
+                )).to.be.revertedWith("Token does not have 18dp")
+                    
         });
       });
 

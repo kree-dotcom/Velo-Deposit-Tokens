@@ -68,11 +68,15 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
         currentLastId = 1; //avoid id 0
         //set up details for underlying tokens
         router = IRouter(_router);
+
         //here we check one token is USDC and that the other token has 18d.p.
         //this prevents pricing mistakes and is defensive design against dev oversight.
-        /*
+        //Obvious this is not a full check, a malicious ERC20 can set it's own symbol as USDC too 
+        //but in practice as only the multi-sig should be deploying via Templater this is not a concern 
+        
         bytes memory USDCSymbol = abi.encodePacked("USDC");
         bytes memory token0Symbol = abi.encodePacked(IERC20Metadata(_token0).symbol());
+        //equality cannot be checked for strings so we hash them first.
         if (keccak256(token0Symbol) == keccak256(USDCSymbol)){
             require( IERC20Metadata(_token1).decimals() == 18, "Token does not have 18dp");
         }
@@ -83,7 +87,7 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
             require( keccak256(token1Symbol) == keccak256(USDCSymbol), "One token must be USDC");
             require( IERC20Metadata(_token0).decimals() == 18, "Token does not have 18dp");
             
-        }*/
+        }
 
         token0 = _token0;
         token1 = _token1;

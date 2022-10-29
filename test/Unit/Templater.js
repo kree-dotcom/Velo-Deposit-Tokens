@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 
-describe("Templater contract", function () {
+describe("Unit tests: Templater contract", function () {
     const provider = ethers.provider;
     const ZERO_ADDRESS = ethers.constants.AddressZero;
     
@@ -15,7 +15,8 @@ describe("Templater contract", function () {
         PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
         TESTVoter = await ethers.getContractFactory("TESTVoter")
 
-        tokenA = await TESTERC20Token.deploy("TokenA", "TA")
+        //one token must mimic USDC to bypass checks
+        tokenA = await TESTERC20Token.deploy("TokenA", "USDC")
         tokenB = await TESTERC20Token.deploy("TokenB", "TB")
         priceOracle = await PriceOracle.deploy()
         voter = await TESTVoter.deploy()

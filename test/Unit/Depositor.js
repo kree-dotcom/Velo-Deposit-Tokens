@@ -2,7 +2,7 @@ const { expect } = require("chai")
 const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 
-describe("Depositor contract", function () {
+describe("Unit tests: Depositor contract", function () {
     const provider = ethers.provider;
     const stable = true;
 

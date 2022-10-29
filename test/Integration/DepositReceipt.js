@@ -23,6 +23,8 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
         DepositReceipt = await ethers.getContractFactory("DepositReceipt")
         TESTERC20Token8DP = await ethers.getContractFactory("TESTERC20Token8DP")
         erc20_8DP = await TESTERC20Token8DP.deploy("8DPToken", "8DP")
+        TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
+        tokenA = await TESTERC20Token8DP.deploy("TokenA", "TA")
         
 
         depositReceipt = await DepositReceipt.deploy(
@@ -49,33 +51,33 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
     });
 
     describe("Constructor", function (){
-        /*
+        
         it("Should revert if neither token is USDC", async function (){
-            expect( await DepositReceipt.deploy(
+            await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
                 "DR",
                 router.address,
-                alice.address,
+                tokenA.address,
                 sUSD,
                 true,
                 price_feed.address
                 )).to.be.revertedWith("One token must be USDC")
 
-                expect( await DepositReceipt.deploy(
-                    "Deposit_Receipt",
-                    "DR",
-                    router.address,
-                    sUSD,
-                    alice.address,
-                    true,
-                    price_feed.address
-                    )).to.be.revertedWith("One token must be USDC")
+            await expect(DepositReceipt.deploy(
+                "Deposit_Receipt",
+                "DR",
+                router.address,
+                sUSD,
+                tokenA.address,
+                true,
+                price_feed.address
+                )).to.be.revertedWith("One token must be USDC")
         });
-        */
+        
         it("should enforce the non-USDC token having 18d.p", async function (){
             //success case is handed by general set up
-            /*
-            expect( await DepositReceipt.deploy(
+            
+            await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
                 "DR",
                 router.address,
@@ -85,16 +87,16 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
                 price_feed.address
                 )).to.be.revertedWith("Token does not have 18dp")
 
-                expect( await DepositReceipt.deploy(
-                    "Deposit_Receipt",
-                    "DR",
-                    router.address,
-                    erc20_8DP.address,
-                    USDC,
-                    true,
-                    price_feed.address
-                    )).to.be.revertedWith("Token does not have 18dp")
-                    */
+            await expect(DepositReceipt.deploy(
+                "Deposit_Receipt",
+                "DR",
+                router.address,
+                erc20_8DP.address,
+                USDC,
+                true,
+                price_feed.address
+                )).to.be.revertedWith("Token does not have 18dp")
+                    
         });
       });
 

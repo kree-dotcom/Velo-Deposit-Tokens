@@ -40,8 +40,11 @@ describe("Integration OP Mainnet: Depositor contract", function () {
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
         Depositor = await ethers.getContractFactory("Depositor")
         DepositReceipt = await ethers.getContractFactory("DepositReceipt")
+
+        //If this section is uncommented the tests run in isolation but fail when run as part of the full suite
+        //determine what dark magic is causing this.
         
-        
+        /*
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
             "DR",
@@ -51,7 +54,7 @@ describe("Integration OP Mainnet: Depositor contract", function () {
             true,
             pricefeed_address
             )
-            
+        */ 
     
 
         depositor = await Depositor.connect(owner).deploy(
