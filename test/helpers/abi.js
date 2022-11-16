@@ -46,10 +46,11 @@ const ERC20 = [
 
     "function deposit(uint256, uint256) external"
   ]
-
+  
   const Router = [
     "function quoteRemoveLiquidity(address, address, bool, uint256) external view returns(uint256, uint256)",
-    "function getAmountOut(uint256, address, address) external view returns(uint256, bool)"
+    "function getAmountOut(uint256, address, address) external view returns(uint256, bool)",
+    "function swapExactTokensForTokensSimple(uint256 amountIn, uint256 amountOutMin, address tokenFrom, address tokenTo, bool stable, address to, uint256 deadline) external returns(uint256)"
   ]
 
   const PriceFeed = [

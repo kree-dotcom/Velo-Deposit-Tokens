@@ -21,7 +21,10 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
     uint256 private immutable oracleBase;
     uint256 private constant HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
     uint256 private constant BASE = 1 ether; //division base
+    uint256 private constant USDC_BASE = 1e6;
+    uint256 private constant ALLOWED_DEVIATION = 5e16; //5% in 1e18 / ETH scale
     uint256 private constant SCALE_SHIFT = 1e12; //brings USDC 6.d.p up to 18d.p. standard
+    uint256 private constant ONE_TOKEN = 1e18; //due to constructor restrictions we know the non-USDC token has 18d.p.
     //Mapping from NFTid to number of associated poolTokens
     mapping(uint256 => uint256) public pooledTokens;
     //Mapping from NFTid to original depositor contract(where tokens can be redeemed by anyone)
@@ -184,6 +187,7 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
     }
     /**
      * @notice Pass through function that converts pooledTokens to underlying asset amounts. 
+     * @dev for pricing THIS MUST NOT be used in isolation, use priceLiquidity instead
      * @param _liquidity amount of pooledTokens you want to find the underlying liquidity for.
      */
     function viewQuoteRemoveLiquidity(uint256 _liquidity) public view returns( uint256, uint256 ){
@@ -237,18 +241,53 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
         uint256 value1;
         if (token0 == USDC){
             //hardcode value of USDC at $1
+            //check swap value of 1 USDC to other token to protect against flash loan attacks
+            uint256 amountOut; //amount received by trade
+            bool stablePool; //if the traded pool is stable or volatile.
+            (amountOut, stablePool) = router.getAmountOut(ONE_TOKEN, token1, USDC);
+            require(stablePool == stable, "pricing occuring through wrong pool" );
+
+            uint256 oraclePrice = getOraclePrice();
+            amountOut = (amountOut * oracleBase) / USDC_BASE; //shift USDC amount to same scale as oracle
+
+            //calculate acceptable deviations from oracle price
+            uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
+            uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
+            //because 1 USDC = $1 we can compare its amount directly to bounds
+            require(lowerBound < amountOut, "Price shift low detected");
+            require(upperBound > amountOut, "Price shift high detected");
+
             value0 = token0Amount * SCALE_SHIFT;
             
-            value1 = (token1Amount * getOraclePrice()) / oracleBase;
+            value1 = (token1Amount * oraclePrice) / oracleBase;
         }
         //token1 must be USDC 
         else {
             //hardcode value of USDC at $1
+             //check swap value of 1 USDC to other token to protect against flash loan attacks
+            uint256 amountOut; //amount received by trade
+            bool stablePool; //if the traded pool is stable or volatile.
+            (amountOut, stablePool) = router.getAmountOut(ONE_TOKEN, token0, USDC);
+            require(stablePool == stable, "pricing occuring through wrong pool" );
+
+            uint256 oraclePrice = getOraclePrice();
+            console.log("oracle before formatting ", oraclePrice);
+            amountOut = (amountOut * oracleBase) / USDC_BASE; //shift USDC amount to same scale as oracle
+
+            //calculate acceptable deviations from oracle price
+            uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
+            uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
+            //because 1 USDC = $1 we can compare its amount directly to bounds
+            require(lowerBound < amountOut, "Price shift low detected");
+            console.log("upper ", upperBound);
+            console.log("swap amount", amountOut);
+            require(upperBound > amountOut, "Price shift high detected");
+
             value1 = token1Amount * SCALE_SHIFT;
            
-            value0 = (token0Amount * getOraclePrice()) / oracleBase;
+            value0 = (token0Amount * oraclePrice) / oracleBase;
         }
-        //Invariant: both value0 and value1 are in ETH scale 6.d.p now
+        //Invariant: both value0 and value1 are in ETH scale 18.d.p now
         //USDC has only 6 decimals so we bring it up to the same scale as other 18d.p ERC20s
         return(value0 + value1);
     }

@@ -7,18 +7,22 @@ contract TESTGauge{
 
     IERC20 AMMToken;
     ERC20 public FakeRewards;
+    mapping(address => uint256) public balanceOf;
 
     constructor(address _AMMToken){
         AMMToken = IERC20(_AMMToken);
         FakeRewards = new TESTERC20Token("Fake Rewards", "FR");
     }
 
+
     function deposit(uint256 _amount, uint tokenId) external {
         AMMToken.transferFrom(msg.sender, address(this), _amount);
+        balanceOf[msg.sender] += _amount;
     }   
 
     function withdraw(uint256 _amount) external {
         AMMToken.transfer(msg.sender, _amount);
+        balanceOf[msg.sender] -= _amount;
     }
 
     function getReward(address account, address[] memory tokens) external {
