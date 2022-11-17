@@ -14,12 +14,14 @@ describe("Unit tests: Templater contract", function () {
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
         PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
         TESTVoter = await ethers.getContractFactory("TESTVoter")
+        TESTGauge = await ethers.getContractFactory("TESTGauge")
 
         //one token must mimic USDC to bypass checks
         tokenA = await TESTERC20Token.deploy("TokenA", "USDC")
         tokenB = await TESTERC20Token.deploy("TokenB", "TB")
         priceOracle = await PriceOracle.deploy()
-        voter = await TESTVoter.deploy()
+        gauge = await TESTGauge.deploy(alice.address)
+        voter = await TESTVoter.deploy(gauge.address)
 
         templater = await Templater.deploy(
             tokenA.address,
@@ -141,14 +143,18 @@ describe("Unit tests: Templater contract", function () {
 
     describe("makeNewDepositor", function (){
         it("Should allow anyone to set up a new Depositer", async function (){
-            await expect(templater.connect(owner).makeNewDepositor()).to.emit(templater, "newDepositorMade")
-            await expect(templater.connect(alice).makeNewDepositor()).to.emit(templater, "newDepositorMade")
-            //how to check for correct emitted addresses given we don't know prior? (without using create2)
+            let tx_1 = await templater.connect(owner).makeNewDepositor()
+            let new_depositor = await templater.UserToDepositor(owner.address)
+            await expect(tx_1).to.emit(templater, "newDepositorMade").withArgs(owner.address, new_depositor)
+
+            tx_2 = await templater.connect(alice).makeNewDepositor()
+            new_depositor = await templater.UserToDepositor(alice.address)
+            await expect(tx_2).to.emit(templater, "newDepositorMade").withArgs(alice.address, new_depositor)
         });
         it("Should revert if called twice by the same user", async function (){
             await templater.connect(alice).makeNewDepositor()
             await expect(templater.connect(alice).makeNewDepositor()).to.be.revertedWith("User already has Depositor")
-            //how to check for correct emitted addresses given we don't know prior? (without using create2)
+            
         });
       });
 })

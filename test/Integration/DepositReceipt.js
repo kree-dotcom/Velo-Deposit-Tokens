@@ -30,6 +30,8 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
     const USDC_address = addresses.optimism.USDC
     const sUSD_address = addresses.optimism.sUSD
     const SNX_address = addresses.optimism.SNX
+    const SNX_doner = addresses.optimism.SNX_Doner
+    const USDC_doner = addresses.optimism.USDC_Doner
     const price_feed_address = addresses.optimism.Chainlink_SUSD_Feed
     const price_feed_SNX_address = addresses.optimism.Chainlink_SNX_Feed
 
@@ -228,6 +230,9 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
 
         it("Should revert price checks if a large swap tries to manipulate the value", async function (){
 
+            
+
+
             SNX_deposit_receipt = await DepositReceipt.deploy(
                 "Deposit_Receipt_SNX",
                 "DRSNX",
@@ -248,29 +253,52 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
             let USDC_amount = ethers.utils.parseEther('0.000001') //USDC is 6d.p. so this is $1 million
 
             //borrow USDC tokens from doner addresses 
-            usdc_doner = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
-            impersonateForToken(provider, owner, USDC, usdc_doner, USDC_amount.mul(2).add(USDC_base))
+            impersonateForToken(provider, owner, USDC, USDC_doner, USDC_amount.mul(2).add(USDC_base))
 
+            //borrow SNX tokens from doner addresses 
+            SNX_amount = await SNX.balanceOf(SNX_doner)
+            impersonateForToken(provider, owner, SNX, SNX_doner, SNX_amount)
             
             let amountOutMin = 10 //we want a large trade where we do not care about slippage so we set this very low
             let deadline = 1981351922 //year 2032
             await USDC.connect(owner).approve(router.address, USDC_amount.mul(2))
 
             let tokens_before_swap = await router.quoteRemoveLiquidity(USDC.address, SNX.address, false, liquidity)
-            console.log("Before swap share is usdc ", tokens_before_swap[0], " snx ", tokens_before_swap[1])
+            //console.log("Before swap share is usdc ", tokens_before_swap[0], " snx ", tokens_before_swap[1])
             
             //expect price checks prior to the swap to succeed
             await SNX_deposit_receipt.priceLiquidity(liquidity)
-            
+
+            let balance_before = await SNX.balanceOf(owner.address)
+
             await router.connect(owner).swapExactTokensForTokensSimple(USDC_amount, amountOutMin, USDC.address, SNX.address, false, owner.address, deadline)
+            
+            let balance_after = await SNX.balanceOf(owner.address)
 
             let tokens_after_swap = await router.quoteRemoveLiquidity(USDC.address, SNX.address, false, liquidity)
-            console.log("After swap share is usdc ", tokens_after_swap[0], " snx ", tokens_after_swap[1])
+            //console.log("After swap share is usdc ", tokens_after_swap[0], " snx ", tokens_after_swap[1])
             //expect price checks after to the swap to fail
             await expect (SNX_deposit_receipt.priceLiquidity(liquidity)).to.be.revertedWith("Price shift high detected")
             
+            //swap original trade amount back to get exchange rate roughly back to normal
+            let SNX_to_swap = balance_after.sub(balance_before)
+            await SNX.connect(owner).approve(router.address, balance_after)
+            await router.connect(owner).swapExactTokensForTokensSimple(SNX_to_swap, amountOutMin, SNX.address, USDC.address, false, owner.address, deadline)
+            
+            //expect price checks after resetting exchange rate on Velodrome to pass
+            await SNX_deposit_receipt.priceLiquidity(liquidity)
+            
+            //we should be able to check lower bound by doing the swap again but it reverts?
+
+            //balance_after = await SNX.balanceOf(owner.address)
+            //console.log(SNX_to_swap.gt(balance_after))
+            //await router.connect(owner).swapExactTokensForTokensSimple(SNX_to_swap, amountOutMin, SNX.address, USDC.address, false, owner.address, deadline)
+            
+            //expect price checks after to the swap to fail
+            //await expect (SNX_deposit_receipt.priceLiquidity(liquidity)).to.be.revertedWith("Price shift low detected")
 
         });
+
 
         it("Should price liquidity right depending on which token USDC is", async function (){
             const liquidity = ethers.utils.parseEther('1')
@@ -296,8 +324,8 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
                 "Deposit_Receipt2",
                 "DR2",
                 router.address,
-                sUSD,
-                USDC,
+                sUSD.address,
+                USDC.address,
                 true,
                 price_feed.address
                 )

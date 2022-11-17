@@ -271,7 +271,6 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
             require(stablePool == stable, "pricing occuring through wrong pool" );
 
             uint256 oraclePrice = getOraclePrice();
-            console.log("oracle before formatting ", oraclePrice);
             amountOut = (amountOut * oracleBase) / USDC_BASE; //shift USDC amount to same scale as oracle
 
             //calculate acceptable deviations from oracle price
@@ -279,8 +278,6 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
             uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
             //because 1 USDC = $1 we can compare its amount directly to bounds
             require(lowerBound < amountOut, "Price shift low detected");
-            console.log("upper ", upperBound);
-            console.log("swap amount", amountOut);
             require(upperBound > amountOut, "Price shift high detected");
 
             value1 = token1Amount * SCALE_SHIFT;

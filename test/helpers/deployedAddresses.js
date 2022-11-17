@@ -10,6 +10,8 @@ const voter = "0x09236cfF45047DBee6B921e00704bed6D6B8Cf7e"
 const router = "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9"
 const chainlink_SUSD_feed = "0x7f99817d87baD03ea21E05112Ca799d715730efe"
 const chainlink_SNX_feed = "0x2FCF37343e916eAEd1f1DdaaF84458a359b53877"
+const SNX_doner = "0xa5f7a39E55D7878bC5bd754eE5d6BD7a7662355b"
+const USDC_doner = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
 
 const sAMM_USDC_sUSD_donor = "0x0E4375cA948a0Cc301dd0425A4c5e163b03a65D0"
 
@@ -24,6 +26,8 @@ const optimism_OP = {sUSD: sUSD,
                      Voter : voter,
                      Router : router,
                      AMMToken_Donor : sAMM_USDC_sUSD_donor,
+                     SNX_Doner : SNX_doner,
+                     USDC_Doner : USDC_doner,
                      Chainlink_SUSD_Feed : chainlink_SUSD_feed,
                      Chainlink_SNX_Feed : chainlink_SNX_feed}
 
