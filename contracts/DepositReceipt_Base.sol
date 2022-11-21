@@ -9,99 +9,51 @@ import "./Interfaces/IAggregatorV3.sol";
 import "./Interfaces/IAccessControlledOffchainAggregator.sol";
 
 import "./Interfaces/IRouter.sol";
-//dev debug
-import "hardhat/console.sol";
 
-contract DepositReceipt is  ERC721Enumerable, AccessControl {
+
+abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
     
     // Role based access control, minters can mint or burn moUSD
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");  
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");  
 
-    uint256 private immutable oracleBase;
+    
     uint256 private constant HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
-    uint256 private constant BASE = 1 ether; //division base
-    uint256 private constant USDC_BASE = 1e6;
-    uint256 private constant ALLOWED_DEVIATION = 5e16; //5% in 1e18 / ETH scale
-    uint256 private constant SCALE_SHIFT = 1e12; //brings USDC 6.d.p up to 18d.p. standard
-    uint256 private constant ONE_TOKEN = 1e18; //due to constructor restrictions we know the non-USDC token has 18d.p.
+    uint256 constant BASE = 1 ether; //division base
+    uint256 constant HUNDRED_TOKENS = 1e20; //due to constructor restrictions we know the non-USDC token has 18d.p.
+    uint256 constant HUNDRED = 100; //used to scale 100 token price to 1 token price
+    
     //Mapping from NFTid to number of associated poolTokens
     mapping(uint256 => uint256) public pooledTokens;
     //Mapping from NFTid to original depositor contract(where tokens can be redeemed by anyone)
     mapping(uint256 => address) public relatedDepositor;
 
     //last NFT id, used as key
-    uint256 currentLastId;
+    uint256 public currentLastId;
 
-    address private constant USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607; 
+    //router used for underlying asset quotes
+    IRouter public router;
+
+    //hardcoded price bounds used by chainlink for ETH feed
+    int192 ETHMaxPrice;
+    int192 ETHMinPrice;
+    //hardcoded price bounds used by chainlink for Token in USD feed
+    int192 tokenMaxPrice;
+    int192 tokenMinPrice;
+
     //underlying gauge token details
-    address public immutable token0; 
-    address public immutable token1;
-    bool public immutable stable;
+    address public token0; 
+    address public token1;
+    bool public stable;
 
     
-    //router used for underlying asset quotes
-    IRouter public immutable router;
-    //Chainlink oracle source
-    IAggregatorV3 priceFeed;
-    //hardcoded price bounds used by chainlink
-    int192 immutable maxPrice;
-    int192 immutable minPrice;
+    
+    
 
     event AddNewMinter(address indexed account, address indexed addedBy);
     event NFTSplit(uint256 oldNFTId, uint256 newNFTId);
     event NFTDataModified(uint256 NFTId, uint256 pastPooledTokens, uint256 newPooledTokens);
 
-    /**
-    *    @notice Zero address checks done in Templater that generates DepositReceipt and so not needed here.
-    **/
-    constructor(string memory _name, 
-                string memory _symbol, 
-                address _router, 
-                address _token0,
-                address _token1,
-                bool _stable,
-                address _priceFeed) 
-                ERC721(_name, _symbol){
-
-        //we dont want the `DEFAULT_ADMIN_ROLE` to exist as this doesn't require a 
-        // time delay to add/remove any role and so is dangerous. 
-        //So we ignore it and set our weaker admin role.
-        _setupRole(ADMIN_ROLE, msg.sender);
-        currentLastId = 1; //avoid id 0
-        //set up details for underlying tokens
-        router = IRouter(_router);
-
-        //here we check one token is USDC and that the other token has 18d.p.
-        //this prevents pricing mistakes and is defensive design against dev oversight.
-        //Obvious this is not a full check, a malicious ERC20 can set it's own symbol as USDC too 
-        //but in practice as only the multi-sig should be deploying via Templater this is not a concern 
-        
-        bytes memory USDCSymbol = abi.encodePacked("USDC");
-        bytes memory token0Symbol = abi.encodePacked(IERC20Metadata(_token0).symbol());
-        //equality cannot be checked for strings so we hash them first.
-        if (keccak256(token0Symbol) == keccak256(USDCSymbol)){
-            require( IERC20Metadata(_token1).decimals() == 18, "Token does not have 18dp");
-        }
-        else
-        {   
-            bytes memory token1Symbol = abi.encodePacked(IERC20Metadata(_token1).symbol());
-            
-            require( keccak256(token1Symbol) == keccak256(USDCSymbol), "One token must be USDC");
-            require( IERC20Metadata(_token0).decimals() == 18, "Token does not have 18dp");
-            
-        }
-
-        token0 = _token0;
-        token1 = _token1;
-        stable = _stable;
-        priceFeed = IAggregatorV3(_priceFeed);
-        IAccessControlledOffchainAggregator  aggregator = IAccessControlledOffchainAggregator(priceFeed.aggregator());
-        //fetch the pricefeeds hard limits so we can be aware if these have been reached.
-        minPrice = aggregator.minAnswer();
-        maxPrice = aggregator.maxAnswer();
-        oracleBase = 10 ** priceFeed.decimals();  //Chainlink USD oracles have 8d.p.
-    }
 
     modifier onlyMinter{
         require(hasRole(MINTER_ROLE, msg.sender), "Caller is not a minter");
@@ -204,21 +156,24 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
 
     /** 
      * @dev This function is view but uses block.timestamp which will only return a non-zero value in a tx call.
+     * @param _priceFeed the Chainlink aggregator for the price you want to retrieve, ETH or Token.
+     * @param _maxPrice the immutable maximum price this aggregator has
+     * @param _minPrice the immutable minimum price this aggregator has
      * @return Oracle price converted to a uint256 for ease of use elsewhere
      */
-    function getOraclePrice() public view returns (uint256 ) {
+    function getOraclePrice(IAggregatorV3 _priceFeed, int192 _maxPrice, int192 _minPrice) public view returns (uint256 ) {
         (
             /*uint80 roundID*/,
             int signedPrice,
             /*uint startedAt*/,
             uint timeStamp,
             /*uint80 answeredInRound*/
-        ) = priceFeed.latestRoundData();
+        ) = _priceFeed.latestRoundData();
         //check for Chainlink oracle deviancies, force a revert if any are present. Helps prevent a LUNA like issue
         require(signedPrice > 0, "Negative Oracle Price");
         require(timeStamp >= block.timestamp - HEARTBEAT_TIME , "Stale pricefeed");
-        require(signedPrice < maxPrice, "Upper price bound breached");
-        require(signedPrice > minPrice, "Lower price bound breached");
+        require(signedPrice < _maxPrice, "Upper price bound breached");
+        require(signedPrice > _minPrice, "Lower price bound breached");
         uint256 price = uint256(signedPrice);
         return price;
 
@@ -232,60 +187,5 @@ contract DepositReceipt is  ERC721Enumerable, AccessControl {
     *  @dev each DepositReceipt's valuation method is sensitive to available liquidity keep this in mind as liquidating a pooled token by using the same pool will reduce overall liquidity
 
     */
-    function priceLiquidity(uint256 _liquidity) external view returns(uint256){
-        uint256 token0Amount;
-        uint256 token1Amount;
-        (token0Amount, token1Amount) = viewQuoteRemoveLiquidity(_liquidity);
-        //USDC route 
-        uint256 value0;
-        uint256 value1;
-        if (token0 == USDC){
-            //hardcode value of USDC at $1
-            //check swap value of 1 USDC to other token to protect against flash loan attacks
-            uint256 amountOut; //amount received by trade
-            bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(ONE_TOKEN, token1, USDC);
-            require(stablePool == stable, "pricing occuring through wrong pool" );
-
-            uint256 oraclePrice = getOraclePrice();
-            amountOut = (amountOut * oracleBase) / USDC_BASE; //shift USDC amount to same scale as oracle
-
-            //calculate acceptable deviations from oracle price
-            uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
-            uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
-            //because 1 USDC = $1 we can compare its amount directly to bounds
-            require(lowerBound < amountOut, "Price shift low detected");
-            require(upperBound > amountOut, "Price shift high detected");
-
-            value0 = token0Amount * SCALE_SHIFT;
-            
-            value1 = (token1Amount * oraclePrice) / oracleBase;
-        }
-        //token1 must be USDC 
-        else {
-            //hardcode value of USDC at $1
-             //check swap value of 1 USDC to other token to protect against flash loan attacks
-            uint256 amountOut; //amount received by trade
-            bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(ONE_TOKEN, token0, USDC);
-            require(stablePool == stable, "pricing occuring through wrong pool" );
-
-            uint256 oraclePrice = getOraclePrice();
-            amountOut = (amountOut * oracleBase) / USDC_BASE; //shift USDC amount to same scale as oracle
-
-            //calculate acceptable deviations from oracle price
-            uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
-            uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
-            //because 1 USDC = $1 we can compare its amount directly to bounds
-            require(lowerBound < amountOut, "Price shift low detected");
-            require(upperBound > amountOut, "Price shift high detected");
-
-            value1 = token1Amount * SCALE_SHIFT;
-           
-            value0 = (token0Amount * oraclePrice) / oracleBase;
-        }
-        //Invariant: both value0 and value1 are in ETH scale 18.d.p now
-        //USDC has only 6 decimals so we bring it up to the same scale as other 18d.p ERC20s
-        return(value0 + value1);
-    }
+    function priceLiquidity(uint256 _liquidity) external virtual view returns(uint256);
 }

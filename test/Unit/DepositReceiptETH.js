@@ -3,27 +3,29 @@ const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 const { addresses } = require("../helpers/deployedAddresses.js")
 
-describe("Unit tests: DepositReceipt contract", function () {
+describe("Unit tests: DepositReceiptETH contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"))
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"))
-    const USDC = addresses.optimism.USDC
+    const WETH = addresses.optimism.WETH
+   
 
     before(async function () {
         
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
-        DepositReceipt = await ethers.getContractFactory("DepositReceipt_USDC")
-        Router = await ethers.getContractFactory("TESTRouter")
+        DepositReceipt = await ethers.getContractFactory("DepositReceipt_ETH")
+        Router = await ethers.getContractFactory("TESTRouterETH")
         PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
         TESTERC20Token8DP = await ethers.getContractFactory("TESTERC20Token8DP")
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
 
-        token1 = await TESTERC20Token.deploy("token1", "USDC")
+        token1 = await TESTERC20Token.deploy("token1", "WETH")
         token2 = await TESTERC20Token.deploy("token2", "TB")
         token3 = await TESTERC20Token.deploy("token3", "TC")
         erc20_8DP = await TESTERC20Token8DP.deploy("8DPToken", "8DP")
         router = await Router.deploy()
         priceOracle = await PriceOracle.deploy(110000000)
+        ETHPriceOracle = await PriceOracle.deploy(1200000000)
 
         
 
@@ -34,6 +36,7 @@ describe("Unit tests: DepositReceipt contract", function () {
             token1.address,
             token2.address,
             true,
+            ETHPriceOracle.address,
             priceOracle.address
             )
 
@@ -42,9 +45,10 @@ describe("Unit tests: DepositReceipt contract", function () {
                 "Deposit_Receipt",
                 "DR",
                 router.address,
-                USDC,
+                token2.address,
                 token1.address,
                 true,
+                ETHPriceOracle.address,
                 priceOracle.address
                 )
 
@@ -61,7 +65,7 @@ describe("Unit tests: DepositReceipt contract", function () {
     });
 
     describe("Constructor", function (){
-        it("Should revert if neither token is USDC", async function (){
+        it("Should revert if neither token is WETH", async function (){
             
             await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
@@ -70,8 +74,9 @@ describe("Unit tests: DepositReceipt contract", function () {
                 token3.address,
                 token2.address,
                 true,
+                ETHPriceOracle.address,
                 price_feed.address
-                )).to.be.revertedWith("One token must be USDC")
+                )).to.be.revertedWith("One token must be WETH")
 
             await expect(DepositReceipt.deploy(
                     "Deposit_Receipt",
@@ -80,20 +85,22 @@ describe("Unit tests: DepositReceipt contract", function () {
                     token2.address,
                     token3.address,
                     true,
+                    ETHPriceOracle.address,
                     price_feed.address
-                    )).to.be.revertedWith("One token must be USDC")
+                    )).to.be.revertedWith("One token must be WETH")
                     
         });
-        it("should enforce the non-USDC token having 18d.p", async function (){
+        it("should enforce the non-WETH token having 18d.p", async function (){
             //success case is handed by general set up
             
             await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
                 "DR",
                 router.address,
-                USDC,
+                WETH,
                 erc20_8DP.address,
                 true,
+                ETHPriceOracle.address,
                 price_feed.address
                 )).to.be.revertedWith("Token does not have 18dp")
 
@@ -102,8 +109,9 @@ describe("Unit tests: DepositReceipt contract", function () {
                 "DR",
                 router.address,
                 erc20_8DP.address,
-                USDC,
+                WETH,
                 true,
+                ETHPriceOracle.address,
                 price_feed.address
                 )).to.be.revertedWith("Token does not have 18dp")
                     
@@ -214,12 +222,12 @@ describe("Unit tests: DepositReceipt contract", function () {
       describe("Pricing Pooled Tokens", function (){
         
 
-        it("Should quote removable liquidity correctly", async function (){
+        it.only("Should quote removable liquidity correctly", async function (){
             //pass through function so this only checks inputs haven't been mismatched
             const liquidity = ethers.utils.parseEther('1'); 
             
             let output = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            
+            console.log("quote happened")
             let expected_output = await router.quoteRemoveLiquidity(alice.address, bob.address, true, liquidity)
     
             expect(output[0]).to.equal(expected_output[0])
@@ -227,33 +235,35 @@ describe("Unit tests: DepositReceipt contract", function () {
             
 
         });
-        /*
-        //test broken by new flash loan resistent price oracle, covered in integration tests so no urgent need to fix
         
-        it("Should price liquidity right depending on which token USDC is", async function (){
+        //test broken by new flash loan resistent price oracle, covered in integration tests so no urgent need to fix
+        /*
+        it.only("Should price liquidity right depending on which token WETH is", async function (){
             const liquidity = ethers.utils.parseEther('1'); 
-            const SCALE_SHIFT = ethers.utils.parseEther('0.000001'); //1e12 used to scale USDC up
             let value = await depositReceipt.priceLiquidity(liquidity)
-            //as token0 is not USDC we have assumed token1 is
+            //token 0 is WETH
             let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            let value_token0 = outputs[0].mul(11).div(10)
-            let value_token1 = outputs[1].mul(SCALE_SHIFT)
+            let value_token0 = outputs[0].mul(12)
+            let value_token1 = outputs[1].mul(11).div(10)
+            console.log("value zero", value_token0)
+            console.log("value one", value_token1)
             let expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
 
             
             //in the second instance USDC is token0
             let value2 = await depositReceipt2.priceLiquidity(liquidity)
-            //as token0 is not USDC we have assumed token1 is
+            //as token0 is not WETH we have assumed token1 is
             let outputs2 = await depositReceipt2.viewQuoteRemoveLiquidity(liquidity)
-            value_token0 = outputs2[0].mul(SCALE_SHIFT)
-            value_token1 = outputs2[1].mul(11).div(10)
+            value_token0 = outputs2[0].mul(11).div(10)
+            value_token1 = outputs2[1].mul(12)
             let expected_value2 = ( value_token0 ).add(value_token1 )
             expect(value2).to.equal(expected_value2)
             
             
         });
         */
+        
 
         it("Should revert if Price is outside of boundaries", async function (){
             too_high_price = 1000000000000

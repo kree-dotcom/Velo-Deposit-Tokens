@@ -8,9 +8,9 @@ contract TESTAggregatorV3 {
     int192 price;
     uint256 staleTimestamp;
 
-    constructor() {
+    constructor(int192 _price) {
         aggregator = new TESTAccessControlledOffchainAggregator();
-        price = 110000000;
+        price = _price;
     }
 
     function decimals() external view returns(uint8){

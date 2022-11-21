@@ -39,7 +39,7 @@ describe("Integration OP Mainnet: Depositor contract", function () {
         
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
         Depositor = await ethers.getContractFactory("Depositor")
-        DepositReceipt = await ethers.getContractFactory("DepositReceipt")
+        DepositReceipt = await ethers.getContractFactory("DepositReceipt_USDC")
 
         //If this section is uncommented the tests run in isolation but fail when run as part of the full suite
         //determine what dark magic is causing this.

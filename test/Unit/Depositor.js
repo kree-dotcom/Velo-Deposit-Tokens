@@ -12,7 +12,7 @@ describe("Unit tests: Depositor contract", function () {
         Depositor = await ethers.getContractFactory("Depositor")
         Gauge = await ethers.getContractFactory("TESTGauge")
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
-        DepositReceipt = await ethers.getContractFactory("DepositReceipt")
+        DepositReceipt = await ethers.getContractFactory("DepositReceipt_USDC")
         TESTRouter = await ethers.getContractFactory("TESTRouter")
         PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
 
@@ -25,7 +25,7 @@ describe("Unit tests: Depositor contract", function () {
         token1 = await TESTERC20Token.deploy("token1", "USDC")
         gauge = await Gauge.deploy(AMMToken.address)
         router = await TESTRouter.deploy()
-        priceOracle = await PriceOracle.deploy()
+        priceOracle = await PriceOracle.deploy(110000000)
         
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",

@@ -1,6 +1,6 @@
 pragma solidity =0.8.9;
 
-import "./DepositReceipt.sol";
+import "./DepositReceipt_USDC.sol";
 import "./Interfaces/IGauge.sol";
 import "./Interfaces/IRouter.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -15,7 +15,7 @@ contract Depositor is Ownable {
 
     using SafeERC20 for IERC20; 
 
-    DepositReceipt public immutable depositReceipt;
+    DepositReceipt_USDC public immutable depositReceipt;
     IERC20 public immutable AMMToken;
     IGauge public immutable gauge;
     
@@ -35,7 +35,7 @@ contract Depositor is Ownable {
 
         AMMToken = IERC20(_AMMToken);
         gauge = IGauge(_gauge);
-        depositReceipt = DepositReceipt(_depositReceipt);
+        depositReceipt = DepositReceipt_USDC(_depositReceipt);
     }
 
     //function required to receive ERC721s to this contract

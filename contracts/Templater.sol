@@ -1,6 +1,6 @@
 pragma solidity =0.8.9;
 
-import "./DepositReceipt.sol";
+import "./DepositReceipt_USDC.sol";
 import "./Depositor.sol";
 import "./Interfaces/IVoter.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 //another trusted minter.
 contract Templater {
 
-    DepositReceipt public immutable depositReceipt;
+    DepositReceipt_USDC public immutable depositReceipt;
     mapping(address => address) public UserToDepositor;
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     //store token info to know which pooled pair this Templater relates to.
@@ -66,7 +66,7 @@ contract Templater {
             name = string(abi.encodePacked("Deposit-Receipt-VolatileV1 AMM - ", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
             symbol = string(abi.encodePacked("Receipt-vAMM-", IERC20Metadata(_token0).symbol(), "/", IERC20Metadata(_token1).symbol()));
         }
-        depositReceipt = new DepositReceipt(name, 
+        depositReceipt = new DepositReceipt_USDC(name, 
                                             symbol, 
                                             _router, 
                                             _token0, 

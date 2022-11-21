@@ -21,31 +21,33 @@ async function impersonateForToken(provider, receiver, ERC20, donerAddress, amou
 
 }
 
-describe("Integration OP Mainnet: DepositReceipt contract", function () {
+describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
 
     const router_address = addresses.optimism.Router
     const USDC_address = addresses.optimism.USDC
+    const WETH_address = addresses.optimism.WETH
     const sUSD_address = addresses.optimism.sUSD
-    const SNX_address = addresses.optimism.SNX
-    const SNX_doner = addresses.optimism.SNX_Doner
+    const OP_address = addresses.optimism.OP
     const USDC_doner = addresses.optimism.USDC_Doner
-    const price_feed_address = addresses.optimism.Chainlink_SUSD_Feed
+    const price_feed_OP_address = addresses.optimism.Chainlink_OP_Feed
     const price_feed_SNX_address = addresses.optimism.Chainlink_SNX_Feed
+    const price_feed_ETH_address = addresses.optimism.Chainlink_ETH_Feed
 
     router = new ethers.Contract(router_address, ABIs.Router, provider)
-    price_feed = new ethers.Contract(price_feed_address, ABIs.PriceFeed, provider)
-    price_feed_SNX = new ethers.Contract(price_feed_SNX_address, ABIs.PriceFeed, provider)
-    SNX =  new ethers.Contract(SNX_address, ABIs.ERC20, provider)
+    price_feed = new ethers.Contract(price_feed_OP_address, ABIs.PriceFeed, provider)
+    price_feed_ETH = new ethers.Contract(price_feed_ETH_address, ABIs.PriceFeed, provider)
+    OP =  new ethers.Contract(OP_address, ABIs.ERC20, provider)
     USDC =  new ethers.Contract(USDC_address, ABIs.ERC20, provider)
     sUSD =  new ethers.Contract(sUSD_address, ABIs.ERC20, provider)
+    WETH =  new ethers.Contract(WETH_address, ABIs.ERC20, provider)
 
     before(async function () {
         
         [owner, alice, bob, ...addrs] = await ethers.getSigners()
-        DepositReceipt = await ethers.getContractFactory("DepositReceipt")
+        DepositReceipt = await ethers.getContractFactory("DepositReceipt_ETH")
         TESTERC20Token8DP = await ethers.getContractFactory("TESTERC20Token8DP")
         erc20_8DP = await TESTERC20Token8DP.deploy("8DPToken", "8DP")
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
@@ -56,9 +58,10 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
             "Deposit_Receipt",
             "DR",
             router.address,
-            USDC.address,
-            sUSD.address,
-            true,
+            WETH.address,
+            OP.address,
+            false,
+            price_feed_ETH.address,
             price_feed.address
             )
 
@@ -77,16 +80,17 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
 
     describe("Constructor", function (){
         
-        it("Should revert if neither token is USDC", async function (){
+        it("Should revert if neither token is WETH", async function (){
             await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
                 "DR",
                 router.address,
                 tokenA.address,
                 sUSD.address,
-                true,
+                false,
+                price_feed_ETH.address,
                 price_feed.address
-                )).to.be.revertedWith("One token must be USDC")
+                )).to.be.revertedWith("One token must be WETH")
 
             await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
@@ -94,21 +98,23 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
                 router.address,
                 sUSD.address,
                 tokenA.address,
-                true,
+                false,
+                price_feed_ETH.address,
                 price_feed.address
-                )).to.be.revertedWith("One token must be USDC")
+                )).to.be.revertedWith("One token must be WETH")
         });
         
-        it("should enforce the non-USDC token having 18d.p", async function (){
+        it("should enforce the non-WETH token having 18d.p", async function (){
             //success case is handed by general set up
             
             await expect(DepositReceipt.deploy(
                 "Deposit_Receipt",
                 "DR",
                 router.address,
-                USDC.address,
+                WETH.address,
                 erc20_8DP.address,
-                true,
+                false,
+                price_feed_ETH.address,
                 price_feed.address
                 )).to.be.revertedWith("Token does not have 18dp")
 
@@ -117,8 +123,9 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
                 "DR",
                 router.address,
                 erc20_8DP.address,
-                USDC.address,
-                true,
+                WETH.address,
+                false,
+                price_feed_ETH.address,
                 price_feed.address
                 )).to.be.revertedWith("Token does not have 18dp")
                     
@@ -220,7 +227,7 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
             
             let output = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
             //error here
-            let expected_output = await router.quoteRemoveLiquidity(USDC.address, sUSD.address, true, liquidity)
+            let expected_output = await router.quoteRemoveLiquidity(WETH.address, OP.address, false, liquidity)
     
             expect(output[0]).to.equal(expected_output[0])
             expect(output[1]).to.equal(expected_output[1])
@@ -230,18 +237,6 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
 
         it("Should revert price checks if a large swap tries to manipulate the value", async function (){
 
-            
-
-
-            SNX_deposit_receipt = await DepositReceipt.deploy(
-                "Deposit_Receipt_SNX",
-                "DRSNX",
-                router.address,
-                SNX.address,
-                USDC.address,
-                false,
-                price_feed_SNX.address
-                )
 
             //pass through function so this only checks inputs haven't been mismatched
             const liquidity = ethers.utils.parseEther('1') 
@@ -254,93 +249,84 @@ describe("Integration OP Mainnet: DepositReceipt contract", function () {
 
             //borrow USDC tokens from doner addresses 
             impersonateForToken(provider, owner, USDC, USDC_doner, USDC_amount.mul(2).add(USDC_base))
-
-            //borrow SNX tokens from doner addresses 
-            SNX_amount = await SNX.balanceOf(SNX_doner)
-            impersonateForToken(provider, owner, SNX, SNX_doner, SNX_amount)
             
             let amountOutMin = 10 //we want a large trade where we do not care about slippage so we set this very low
             let deadline = 1981351922 //year 2032
-            await USDC.connect(owner).approve(router.address, USDC_amount.mul(2))
-
-            let tokens_before_swap = await router.quoteRemoveLiquidity(USDC.address, SNX.address, false, liquidity)
+            await USDC.connect(owner).approve(router.address, USDC_amount)
+            //Use borrowed USDC to get large OP balance
+            await router.connect(owner).swapExactTokensForTokensSimple(USDC_amount, amountOutMin, USDC.address, OP.address, false, owner.address, deadline)
+    
+            let tokens_before_swap = await router.quoteRemoveLiquidity(WETH.address, OP.address, false, liquidity)
             //console.log("Before swap share is usdc ", tokens_before_swap[0], " snx ", tokens_before_swap[1])
             
             //expect price checks prior to the swap to succeed
-            await SNX_deposit_receipt.priceLiquidity(liquidity)
+            await depositReceipt.priceLiquidity(liquidity)
 
-            let balance_before = await SNX.balanceOf(owner.address)
+            let balance_before = await WETH.balanceOf(owner.address)
+            const swap_amount = ethers.utils.parseEther('100000') 
+            await OP.connect(owner).approve(router.address, swap_amount)
 
-            await router.connect(owner).swapExactTokensForTokensSimple(USDC_amount, amountOutMin, USDC.address, SNX.address, false, owner.address, deadline)
-            
-            let balance_after = await SNX.balanceOf(owner.address)
+            await router.connect(owner).swapExactTokensForTokensSimple(swap_amount, amountOutMin, OP.address, WETH.address, false, owner.address, deadline)
+        
+            let balance_after = await WETH.balanceOf(owner.address)
 
-            let tokens_after_swap = await router.quoteRemoveLiquidity(USDC.address, SNX.address, false, liquidity)
+            let tokens_after_swap = await router.quoteRemoveLiquidity(WETH.address, OP.address, false, liquidity)
             //console.log("After swap share is usdc ", tokens_after_swap[0], " snx ", tokens_after_swap[1])
             //expect price checks after to the swap to fail
-            await expect (SNX_deposit_receipt.priceLiquidity(liquidity)).to.be.revertedWith("Price shift high detected")
+            await expect (depositReceipt.priceLiquidity(liquidity)).to.be.revertedWith("Price shift low detected")
             
             //swap original trade amount back to get exchange rate roughly back to normal
-            let SNX_to_swap = balance_after.sub(balance_before)
-            await SNX.connect(owner).approve(router.address, balance_after)
-            await router.connect(owner).swapExactTokensForTokensSimple(SNX_to_swap, amountOutMin, SNX.address, USDC.address, false, owner.address, deadline)
+            let ETH_to_swap = balance_after.sub(balance_before)
+            await WETH.connect(owner).approve(router.address, balance_after)
+            await router.connect(owner).swapExactTokensForTokensSimple(ETH_to_swap, amountOutMin, WETH.address, OP.address, false, owner.address, deadline)
             
             //expect price checks after resetting exchange rate on Velodrome to pass
-            await SNX_deposit_receipt.priceLiquidity(liquidity)
-            
-            //we should be able to check lower bound by doing the swap again but it reverts?
-
-            //balance_after = await SNX.balanceOf(owner.address)
-            //console.log(SNX_to_swap.gt(balance_after))
-            //await router.connect(owner).swapExactTokensForTokensSimple(SNX_to_swap, amountOutMin, SNX.address, USDC.address, false, owner.address, deadline)
-            
-            //expect price checks after to the swap to fail
-            //await expect (SNX_deposit_receipt.priceLiquidity(liquidity)).to.be.revertedWith("Price shift low detected")
+            await depositReceipt.priceLiquidity(liquidity)
 
         });
 
 
-        it("Should price liquidity right depending on which token USDC is", async function (){
+        it("Should price liquidity right depending on which token WETH is", async function (){
             const liquidity = ethers.utils.parseEther('1')
             const ORACLE_BASE = 10 ** 8
-            const SCALE_SHIFT = ethers.utils.parseEther('0.000001'); //1e12 used to scale USDC up
             let value = await depositReceipt.priceLiquidity(liquidity)
             
             
             let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            //as token0 is USDC we just scale up
-            let value_token0 = outputs[0].mul(SCALE_SHIFT)
+            // token0 is WETH 
+            let latest_round_ETH = await (price_feed_ETH.latestRoundData())
+            let ETH_price = latest_round_ETH[1]
+            let value_token0 = outputs[0].mul(ETH_price)
             let latest_round = await (price_feed.latestRoundData())
             let price = latest_round[1]
-            let value_token1 = outputs[1].mul(price).div(ORACLE_BASE)
-            let expected_value = ( value_token0 ).add( value_token1 )
+            let value_token1 = outputs[1].mul(price)
+            let expected_value = ( value_token0.add( value_token1 )).div(ORACLE_BASE)
             expect(value).to.equal(expected_value)
 
 
 
             //in the second instance USDC is token1
-            
+            // As we are on a network fork the oracles do not update so we can reuse their prices
             depositReceipt2 = await DepositReceipt.deploy(
                 "Deposit_Receipt2",
                 "DR2",
                 router.address,
-                sUSD.address,
-                USDC.address,
-                true,
+                OP.address,
+                WETH.address,
+                false,
+                price_feed_ETH.address,
                 price_feed.address
                 )
 
             value = await depositReceipt2.priceLiquidity(liquidity)
             
             outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            //as token0 is not USDC we have assumed token1 is
-            latest_round = await (price_feed.latestRoundData())
-            price = latest_round[1]
-            value_token0 = outputs[1].mul(price).div(ORACLE_BASE)
+            //as token0 is not WETH we have assumed token1 is
+            value_token0 = outputs[1].mul(price)
             
-            //as token1 is USDC
-            value_token1 = outputs[0].mul(SCALE_SHIFT)
-            expected_value = ( value_token0 ).add( value_token1 )
+            //as token1 is WETH
+            value_token1 = outputs[0].mul(ETH_price)
+            expected_value = ( value_token0.add( value_token1 )).div(ORACLE_BASE)
             expect(value).to.equal(expected_value)
                 
             

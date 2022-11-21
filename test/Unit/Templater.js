@@ -19,7 +19,7 @@ describe("Unit tests: Templater contract", function () {
         //one token must mimic USDC to bypass checks
         tokenA = await TESTERC20Token.deploy("TokenA", "USDC")
         tokenB = await TESTERC20Token.deploy("TokenB", "TB")
-        priceOracle = await PriceOracle.deploy()
+        priceOracle = await PriceOracle.deploy(110000000)
         gauge = await TESTGauge.deploy(alice.address)
         voter = await TESTVoter.deploy(gauge.address)
 
