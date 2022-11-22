@@ -37,7 +37,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
     const price_feed_ETH_address = addresses.optimism.Chainlink_ETH_Feed
 
     router = new ethers.Contract(router_address, ABIs.Router, provider)
-    price_feed = new ethers.Contract(price_feed_OP_address, ABIs.PriceFeed, provider)
+    price_feed_OP = new ethers.Contract(price_feed_OP_address, ABIs.PriceFeed, provider)
     price_feed_ETH = new ethers.Contract(price_feed_ETH_address, ABIs.PriceFeed, provider)
     OP =  new ethers.Contract(OP_address, ABIs.ERC20, provider)
     USDC =  new ethers.Contract(USDC_address, ABIs.ERC20, provider)
@@ -62,7 +62,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
             OP.address,
             false,
             price_feed_ETH.address,
-            price_feed.address
+            price_feed_OP.address
             )
 
 
@@ -89,7 +89,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 sUSD.address,
                 false,
                 price_feed_ETH.address,
-                price_feed.address
+                price_feed_OP.address
                 )).to.be.revertedWith("One token must be WETH")
 
             await expect(DepositReceipt.deploy(
@@ -100,7 +100,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 tokenA.address,
                 false,
                 price_feed_ETH.address,
-                price_feed.address
+                price_feed_OP.address
                 )).to.be.revertedWith("One token must be WETH")
         });
         
@@ -115,7 +115,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 erc20_8DP.address,
                 false,
                 price_feed_ETH.address,
-                price_feed.address
+                price_feed_OP.address
                 )).to.be.revertedWith("Token does not have 18dp")
 
             await expect(DepositReceipt.deploy(
@@ -126,7 +126,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 WETH.address,
                 false,
                 price_feed_ETH.address,
-                price_feed.address
+                price_feed_OP.address
                 )).to.be.revertedWith("Token does not have 18dp")
                     
         });
@@ -297,14 +297,14 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
             let latest_round_ETH = await (price_feed_ETH.latestRoundData())
             let ETH_price = latest_round_ETH[1]
             let value_token0 = outputs[0].mul(ETH_price)
-            let latest_round = await (price_feed.latestRoundData())
+            let latest_round = await (price_feed_OP.latestRoundData())
             let price = latest_round[1]
             let value_token1 = outputs[1].mul(price)
             let expected_value = ( value_token0.add( value_token1 )).div(ORACLE_BASE)
             expect(value).to.equal(expected_value)
 
 
-
+            
             //in the second instance USDC is token1
             // As we are on a network fork the oracles do not update so we can reuse their prices
             depositReceipt2 = await DepositReceipt.deploy(
@@ -315,7 +315,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 WETH.address,
                 false,
                 price_feed_ETH.address,
-                price_feed.address
+                price_feed_OP.address
                 )
 
             value = await depositReceipt2.priceLiquidity(liquidity)

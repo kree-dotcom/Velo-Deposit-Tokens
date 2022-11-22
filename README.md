@@ -3,7 +3,8 @@
 This set of contracts is a simple wraparound depositor that enables a user to deposit into a VELO staking gauge and receive their rewards while also generating a deposit receipt that can be used on other protocols as collateral. The deposit receipts are  ERC721s that are granted on deposits of  pooled AMM tokens.
 
 ## Fairly valuing deposits
-Integrating services must make their own decisions on how to value this token but a simplistic example is included with the deposit receipt contract. In this method it is assumed each token is paired directly with USDC which is then valued at $1. The withdrawal quantity of each token is received from the Velodrome router, then the non-USDC token has its quantity converted to a Chainlink sourced USD value.
+Integrating services must make their own decisions on how to value this token but a simplistic example is included with the deposit receipt contract. In this method token Chainlink price feeds are used. USDC is assumed to be worth $1 and ETH is priced via Chainlink too. To prevent flash swaps being used to change the pooled token's underlying composition we then check the swap value of the Velodrome pool in question and revert if this is more than 5% from the expected swap price.
+This 5% boundary can be tweaked depending on how volatile a token is expected to be, stablecoins can have a lower allowed deviancy for example.
 Some protections are in place to prevent a stale pricefeed being used. Accrued rewards (in any token) are not counted by the default method of valuation.
 
 ## Acceptable tokens
@@ -28,11 +29,15 @@ Tests are a mixture of unit and integeration tests as is fit. To run the tests:
 
 Coverage is as follows:
 
-File                 |  % Stmts | % Branch |  % Funcs |  % Lines |Uncovered Lines |
----------------------|----------|----------|----------|----------|----------------|
- contracts/          |      100 |       98 |      100 |      100 |                |
-  DepositReceipt.sol |      100 |      100 |      100 |      100 |                |
-  Depositor.sol      |      100 |     87.5 |      100 |      100 |                |
-  Templater.sol      |      100 |      100 |      100 |      100 |                |
-All files            |      100 |       98 |      100 |      100 |                |
+File                      |  % Stmts | % Branch |  % Funcs |  % Lines |Uncovered Lines |
+ contracts/               |      100 |    87.23 |      100 |      100 |                |
+  DepositReceipt_Base.sol |      100 |      100 |      100 |      100 |                |
+  DepositReceipt_ETH.sol  |      100 |       75 |      100 |      100 |                |
+  DepositReceipt_USDC.sol |      100 |    77.27 |      100 |      100 |                |
+  Depositor.sol           |      100 |     87.5 |      100 |      100 |                |
+  Templater.sol           |      100 |      100 |      100 |      100 |                |
+--------------------------|----------|----------|----------|----------|----------------|
+All files                 |      100 |    87.23 |      100 |      100 |                |
+
+
 

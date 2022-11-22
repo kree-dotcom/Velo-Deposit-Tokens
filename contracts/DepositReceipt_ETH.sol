@@ -1,6 +1,7 @@
 pragma solidity =0.8.9;
 
 import "./DepositReceipt_Base.sol";
+import "hardhat/console.sol";
 
 contract DepositReceipt_ETH is  DepositReceipt_Base {
     
@@ -102,6 +103,7 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             uint256 amountOut; //amount received by trade
             bool stablePool; //if the traded pool is stable or volatile.
             (amountOut, stablePool) = router.getAmountOut(HUNDRED_TOKENS, token1, WETH);
+            
             require(stablePool == stable, "pricing occuring through wrong pool" );
 
             uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, tokenMaxPrice, tokenMinPrice);
@@ -110,9 +112,11 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             uint256 valueOut = amountOut * ETHOraclePrice / HUNDRED / BASE; 
 
             //calculate acceptable deviations from oracle price
+            
             uint256 lowerBound = (tokenOraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
             uint256 upperBound = (tokenOraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
             //because 1 USDC = $1 we can compare its amount directly to bounds
+            
             require(lowerBound < valueOut, "Price shift low detected");
             require(upperBound > valueOut, "Price shift high detected");
 
@@ -120,19 +124,18 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             
             value1 = token1Amount * tokenOraclePrice;
         }
-        //token1 must be USDC 
+        //token1 must be WETH
         else {
-            //check swap value of 100tokens to USDC to protect against flash loan attacks
+            
+            //check swap value of 100tokens to WETH to protect against flash loan attacks
             uint256 amountOut; //amount received by trade
             bool stablePool; //if the traded pool is stable or volatile.
             (amountOut, stablePool) = router.getAmountOut(HUNDRED_TOKENS, token0, WETH);
             require(stablePool == stable, "pricing occuring through wrong pool" );
-
             uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, tokenMaxPrice, tokenMinPrice);
             uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, ETHMaxPrice, ETHMinPrice);
             //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
             uint256 valueOut = amountOut * ETHOraclePrice / HUNDRED / BASE; 
-
             //calculate acceptable deviations from oracle price
             uint256 lowerBound = (tokenOraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
             uint256 upperBound = (tokenOraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;

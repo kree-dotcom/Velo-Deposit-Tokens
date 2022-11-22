@@ -61,7 +61,7 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
             true,
             price_feed.address
             )
-        console.log("Price feed after construction ", await depositReceipt.priceFeed())
+        
 
 
     })
@@ -303,7 +303,6 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
 
         it("Should price liquidity right depending on which token USDC is", async function (){
             
-            console.log("Price feed after construction ", await depositReceipt.priceFeed())
             const liquidity = ethers.utils.parseEther('1')
             const ORACLE_BASE = 10 ** 8
             const SCALE_SHIFT = ethers.utils.parseEther('0.000001'); //1e12 used to scale USDC up
