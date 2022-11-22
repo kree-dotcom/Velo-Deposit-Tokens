@@ -2,7 +2,6 @@ pragma solidity =0.8.9;
 
 import "./DepositReceipt_Base.sol";
 
-import "hardhat/console.sol";
 contract DepositReceipt_USDC is  DepositReceipt_Base {
 
     uint256 private constant SCALE_SHIFT = 1e12; //brings USDC 6.d.p up to 18d.p. standard

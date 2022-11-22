@@ -1,7 +1,6 @@
 pragma solidity =0.8.9;
 
 import "./DepositReceipt_Base.sol";
-import "hardhat/console.sol";
 
 contract DepositReceipt_ETH is  DepositReceipt_Base {
     
