@@ -10,12 +10,13 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
     address private constant WETH = 0x4200000000000000000000000000000000000006;
     
     //Chainlink oracle sources
-    IAggregatorV3 ETHPriceFeed;
-    IAggregatorV3 tokenPriceFeed;
+    IAggregatorV3 public ETHPriceFeed;
+    IAggregatorV3 public tokenPriceFeed;
     
     // ten to the power of the number of decimals given by both price feeds
-    uint256 immutable oracleBase;
+    uint256 private immutable oracleBase;
     
+    uint256 private immutable swapSize; //amount swapped to validate exchange rate, due to constructor restrictions we know both tokens are 18.d.p
 
     /**
     *    @notice Zero address checks done in Templater that generates DepositReceipt and so not needed here.
@@ -27,9 +28,11 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
                 address _token1,
                 bool _stable,
                 address _ETHPriceFeed,
-                address _tokenPriceFeed) 
+                address _tokenPriceFeed,
+                uint256 _swapSize)
                 ERC721(_name, _symbol){
-
+        
+        require(_swapSize > 0, "swapSize not set");
         //we dont want the `DEFAULT_ADMIN_ROLE` to exist as this doesn't require a 
         // time delay to add/remove any role and so is dangerous. 
         //So we ignore it and set our weaker admin role.
@@ -48,6 +51,8 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
         //equality cannot be checked for strings so we hash them first.
         if (keccak256(token0Symbol) == keccak256(WETHSymbol)){
             require( IERC20Metadata(_token1).decimals() == 18, "Token does not have 18dp");
+
+            //because the value of WETH is not stable like USDC we cannot do the same setup exchange rate check used in depositReceipt_USDC
         }
         else
         {   
@@ -79,7 +84,10 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
         tokenMinPrice = tokenAggregator.minAnswer();
         tokenMaxPrice = tokenAggregator.maxAnswer();
         // because we have checked both oracles have the same amount of decimals we only store one OracleBase
-        oracleBase = 10 ** ETHOracleDecimals; 
+        oracleBase = 10 ** ETHOracleDecimals;
+        
+        //set the scale of the exchange swap used for priceLiquidity
+        swapSize = _swapSize;
         
     }
 
@@ -101,7 +109,7 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             //check swap value of 100tokens to USDC to protect against flash loan attacks
             uint256 amountOut; //amount received by trade
             bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(HUNDRED_TOKENS, token1, WETH);
+            (amountOut, stablePool) = router.getAmountOut(swapSize, token1, WETH);
             
             require(stablePool == stable, "pricing occuring through wrong pool" );
 
@@ -129,7 +137,7 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             //check swap value of 100tokens to WETH to protect against flash loan attacks
             uint256 amountOut; //amount received by trade
             bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(HUNDRED_TOKENS, token0, WETH);
+            (amountOut, stablePool) = router.getAmountOut(swapSize, token0, WETH);
             require(stablePool == stable, "pricing occuring through wrong pool" );
             uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, tokenMaxPrice, tokenMinPrice);
             uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, ETHMaxPrice, ETHMinPrice);

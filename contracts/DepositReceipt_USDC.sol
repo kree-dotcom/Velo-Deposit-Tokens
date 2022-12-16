@@ -1,6 +1,7 @@
 pragma solidity =0.8.9;
 
 import "./DepositReceipt_Base.sol";
+import "hardhat/console.sol";
 
 contract DepositReceipt_USDC is  DepositReceipt_Base {
 
@@ -9,10 +10,15 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
     uint256 private constant ALLOWED_DEVIATION = 5e16; //5% in 1e18 / ETH scale
     address private constant USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607; 
 
+    uint256 private constant HUNDRED_USDC = 1e8;
+    uint256 private constant HUNDRED_FIVE_USDC = 1e8 + 5e6;
+
     //Chainlink oracle source
     IAggregatorV3 public priceFeed;
     // ten to the power of the number of decimals given by the price feed
     uint256 private immutable oracleBase;
+
+    uint256 private immutable swapSize;
 
     /**
     *    @notice Zero address checks done in Templater that generates DepositReceipt and so not needed here.
@@ -23,7 +29,8 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
                 address _token0,
                 address _token1,
                 bool _stable,
-                address _priceFeed) 
+                address _priceFeed,
+                uint256 _swapSize) 
                 ERC721(_name, _symbol){
 
         //we dont want the `DEFAULT_ADMIN_ROLE` to exist as this doesn't require a 
@@ -41,9 +48,11 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
         
         bytes memory USDCSymbol = abi.encodePacked("USDC");
         bytes memory token0Symbol = abi.encodePacked(IERC20Metadata(_token0).symbol());
+        uint256 amountOut;
         //equality cannot be checked for strings so we hash them first.
         if (keccak256(token0Symbol) == keccak256(USDCSymbol)){
             require( IERC20Metadata(_token1).decimals() == 18, "Token does not have 18dp");
+            (amountOut, ) = router.getAmountOut(_swapSize, _token1, USDC);
         }
         else
         {   
@@ -51,8 +60,14 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
             
             require( keccak256(token1Symbol) == keccak256(USDCSymbol), "One token must be USDC");
             require( IERC20Metadata(_token0).decimals() == 18, "Token does not have 18dp");
+
+            (amountOut, ) = router.getAmountOut(_swapSize, _token0, USDC);
+            
             
         }
+        //rough check to ensure we provide the right scale swapSize output of USDC
+        require(amountOut >= HUNDRED_USDC, "swap amount too small");
+        require(amountOut <= HUNDRED_FIVE_USDC, "swap amount too big");
 
         token0 = _token0;
         token1 = _token1;
@@ -63,6 +78,7 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
         tokenMinPrice = aggregator.minAnswer();
         tokenMaxPrice = aggregator.maxAnswer();
         oracleBase = 10 ** priceFeed.decimals();  //Chainlink USD oracles have 8d.p.
+        swapSize = _swapSize;
     }
 
    /**
@@ -84,7 +100,7 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
             //check swap value of 100tokens to USDC to protect against flash loan attacks
             uint256 amountOut; //amount received by trade
             bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(HUNDRED_TOKENS, token1, USDC);
+            (amountOut, stablePool) = router.getAmountOut(swapSize, token1, USDC);
             require(stablePool == stable, "pricing occuring through wrong pool" );
 
             uint256 oraclePrice = getOraclePrice(priceFeed, tokenMaxPrice, tokenMinPrice);
@@ -107,7 +123,7 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
             //check swap value of 100tokens to USDC to protect against flash loan attacks
             uint256 amountOut; //amount received by trade
             bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(HUNDRED_TOKENS, token0, USDC);
+            (amountOut, stablePool) = router.getAmountOut(swapSize, token0, USDC);
             require(stablePool == stable, "pricing occuring through wrong pool" );
 
             uint256 oraclePrice = getOraclePrice(priceFeed, tokenMaxPrice, tokenMinPrice);
