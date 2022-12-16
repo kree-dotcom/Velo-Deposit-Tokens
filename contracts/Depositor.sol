@@ -133,7 +133,9 @@ contract Depositor is Ownable {
     function _withdrawFromGauge(uint256 _NFTId, address[] memory _tokens)  internal  {
         uint256 amount = depositReceipt.pooledTokens(_NFTId);
         depositReceipt.burn(_NFTId);
-        gauge.getReward(address(this), _tokens);
+        if(_tokens.length > 0){
+            gauge.getReward(address(this), _tokens);
+        }        
         gauge.withdraw(amount);
         //AMMToken adheres to ERC20 spec meaning it reverts on failure, no need to check return
         //slither-disable-next-line unchecked-transfer
