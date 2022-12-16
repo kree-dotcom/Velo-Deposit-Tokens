@@ -6,6 +6,7 @@ import "./Interfaces/IRouter.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "hardhat/console.sol";
 
 
 //Depositer takes pooled tokens from the user and deposits them on their behalf 
@@ -77,9 +78,10 @@ contract Depositor is Ownable {
     *    
     **/
     function partialWithdrawFromGauge(uint256 _NFTId, uint256 _percentageSplit, address[] memory _tokens) public {
+        require(depositReceipt.ownerOf(_NFTId) == msg.sender, "Only NFT owner may withdraw");
+        require(depositReceipt.relatedDepositor(_NFTId) == address(this), "DepositReceipt NFT not related to Depositor");
         uint256 newNFTId = depositReceipt.split(_NFTId, _percentageSplit);
-        //then call withdrawFromGauge on portion removing.
-        withdrawFromGauge(newNFTId, _tokens);
+        _withdrawFromGauge(newNFTId, _tokens);
     }  
 
     /**
@@ -111,12 +113,24 @@ contract Depositor is Ownable {
     }
 
     /**
-    *    @notice burns the NFT related to the ID and withdraws the owed pooledtokens from Gauge and sends to user.  
+    *    @notice external method to call withdrawal, checks the NFT owner is calling and the NFT is related to this Depositor 
     *    @param _NFTId the ID of the DepositReceipt you wish to burn and reclaim the pooledTokens relating to
     *    @param _tokens  array of reward tokens the user wishes to claim at the same time, can be empty.
     *    
     **/
     function withdrawFromGauge(uint256 _NFTId, address[] memory _tokens)  public  {
+        require(depositReceipt.ownerOf(_NFTId) == msg.sender, "Only NFT owner may withdraw");
+        require(depositReceipt.relatedDepositor(_NFTId) == address(this), "DepositReceipt NFT not related to Depositor");
+        _withdrawFromGauge(_NFTId, _tokens);
+    }
+
+    /**
+    *    @notice  Internal process to burn the NFT related to the ID and withdraw the owed pooledtokens from Gauge and sends to user.  
+    *    @param _NFTId the ID of the DepositReceipt you wish to burn and reclaim the pooledTokens relating to
+    *    @param _tokens  array of reward tokens the user wishes to claim at the same time, can be empty.
+    *    
+    **/
+    function _withdrawFromGauge(uint256 _NFTId, address[] memory _tokens)  internal  {
         uint256 amount = depositReceipt.pooledTokens(_NFTId);
         depositReceipt.burn(_NFTId);
         gauge.getReward(address(this), _tokens);
