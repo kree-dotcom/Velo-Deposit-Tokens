@@ -158,11 +158,11 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
      */
     function getOraclePrice(IAggregatorV3 _priceFeed) public view returns (uint256 ) {
         (
-            /*uint80 roundID*/,
+            uint80 roundID,
             int signedPrice,
             /*uint startedAt*/,
             uint timeStamp,
-            /*uint80 answeredInRound*/
+            uint80 answeredInRound
         ) = _priceFeed.latestRoundData();
         //check for Chainlink oracle deviancies, force a revert if any are present. Helps prevent a LUNA like issue
         require(signedPrice > 0, "Negative Oracle Price");
@@ -173,6 +173,7 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
         int192 tokenMaxPrice = aggregator.maxAnswer();
         require(signedPrice < tokenMaxPrice, "Upper price bound breached");
         require(signedPrice > tokenMinPrice, "Lower price bound breached");
+        require(answeredInRound >= roundID, "round not complete");
         uint256 price = uint256(signedPrice);
         return price;
 
