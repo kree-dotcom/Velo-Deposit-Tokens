@@ -44,7 +44,8 @@ contract Templater {
                 address _voter,
                 address _router,
                 address _priceFeed,
-                uint256 _swapSize
+                uint256 _swapSize,
+                uint256 _heartbeat_time
                 ){
         require( _token0 != ZERO_ADDRESS, "Zero address used");
         require( _token1 != ZERO_ADDRESS, "Zero address used");
@@ -74,7 +75,8 @@ contract Templater {
                                             _token1, 
                                             _stable,
                                             _priceFeed,
-                                            _swapSize
+                                            _swapSize,
+                                            _heartbeat_time
                                             );
                                             
         emit DepositReceiptSetUp(address(depositReceipt));

@@ -35,6 +35,7 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
     const price_feed_address = addresses.optimism.Chainlink_SUSD_Feed
     const price_feed_SNX_address = addresses.optimism.Chainlink_SNX_Feed
     const swapSize = ethers.utils.parseEther('100')
+    const HEARTBEAT_TIME = 24*60*60 // 24hours in seconds
 
     router = new ethers.Contract(router_address, ABIs.Router, provider)
     price_feed = new ethers.Contract(price_feed_address, ABIs.PriceFeed, provider)
@@ -61,7 +62,8 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
             sUSD.address,
             true,
             price_feed.address,
-            swapSize
+            swapSize,
+            HEARTBEAT_TIME
             )
         
 
@@ -89,7 +91,8 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 sUSD.address,
                 true,
                 price_feed.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be USDC")
 
             await expect(DepositReceipt.deploy(
@@ -100,7 +103,8 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 tokenA.address,
                 true,
                 price_feed.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be USDC")
         });
         
@@ -115,7 +119,8 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 erc20_8DP.address,
                 true,
                 price_feed.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
 
             await expect(DepositReceipt.deploy(
@@ -126,7 +131,8 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 USDC.address,
                 true,
                 price_feed.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
                     
         });
@@ -248,7 +254,8 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 USDC.address,
                 false,
                 price_feed_SNX.address,
-                SNX_swapSize
+                SNX_swapSize,
+                HEARTBEAT_TIME
                 )
 
             //pass through function so this only checks inputs haven't been mismatched
@@ -275,9 +282,7 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
             //console.log("Before swap share is usdc ", tokens_before_swap[0], " snx ", tokens_before_swap[1])
             
             //expect price checks prior to the swap to succeed
-            console.log("reached 1")
             await SNX_deposit_receipt.priceLiquidity(liquidity)
-            console.log("reached 2")
 
             let balance_before = await SNX.balanceOf(owner.address)
 
@@ -340,7 +345,8 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 USDC.address,
                 true,
                 price_feed.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )
 
             value = await depositReceipt2.priceLiquidity(liquidity)

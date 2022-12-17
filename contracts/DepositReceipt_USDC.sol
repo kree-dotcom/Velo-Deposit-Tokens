@@ -30,7 +30,9 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
                 address _token1,
                 bool _stable,
                 address _priceFeed,
-                uint256 _swapSize) 
+                uint256 _swapSize,
+                uint256 _heartbeat) 
+                DepositReceipt_Base(_heartbeat)
                 ERC721(_name, _symbol){
 
         //we dont want the `DEFAULT_ADMIN_ROLE` to exist as this doesn't require a 

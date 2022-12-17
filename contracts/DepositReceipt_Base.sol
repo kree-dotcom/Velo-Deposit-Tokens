@@ -19,7 +19,7 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");  
 
     
-    uint256 private constant HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
+    uint256 private immutable heartbeat_time; //Check heartbeat frequency when adding new feeds
     uint256 constant BASE = 1 ether; //division base
     
     //Mapping from NFTid to number of associated poolTokens
@@ -56,6 +56,10 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
     modifier onlyAdmin{
         require(hasRole(ADMIN_ROLE, msg.sender), "Caller is not an admin");
         _;
+    }
+
+    constructor(uint256 _heartbeat){
+        heartbeat_time = _heartbeat;
     }
     
     function addMinter(address _account) external onlyAdmin{
@@ -162,7 +166,7 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
         ) = _priceFeed.latestRoundData();
         //check for Chainlink oracle deviancies, force a revert if any are present. Helps prevent a LUNA like issue
         require(signedPrice > 0, "Negative Oracle Price");
-        require(timeStamp >= block.timestamp - HEARTBEAT_TIME , "Stale pricefeed");
+        require(timeStamp >= block.timestamp - heartbeat_time , "Stale pricefeed");
         IAccessControlledOffchainAggregator  aggregator = IAccessControlledOffchainAggregator(_priceFeed.aggregator());
         //fetch the pricefeeds hard limits so we can be aware if these have been reached.
         int192 tokenMinPrice = aggregator.minAnswer();

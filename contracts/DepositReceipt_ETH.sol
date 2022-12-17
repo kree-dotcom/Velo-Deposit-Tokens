@@ -29,7 +29,9 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
                 bool _stable,
                 address _ETHPriceFeed,
                 address _tokenPriceFeed,
-                uint256 _swapSize)
+                uint256 _swapSize,
+                uint256 _heartbeat)
+                DepositReceipt_Base(_heartbeat)
                 ERC721(_name, _symbol){
         
         require(_swapSize > 0, "swapSize not set");

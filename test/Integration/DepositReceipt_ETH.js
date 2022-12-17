@@ -36,6 +36,7 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
     const price_feed_SNX_address = addresses.optimism.Chainlink_SNX_Feed
     const price_feed_ETH_address = addresses.optimism.Chainlink_ETH_Feed
     let swapSize = ethers.utils.parseEther('100')
+    const HEARTBEAT_TIME = 24*60*60 // 24hrs in seconds
 
     router = new ethers.Contract(router_address, ABIs.Router, provider)
     price_feed_OP = new ethers.Contract(price_feed_OP_address, ABIs.PriceFeed, provider)
@@ -64,7 +65,8 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
             false,
             price_feed_ETH.address,
             price_feed_OP.address,
-            swapSize
+            swapSize,
+            HEARTBEAT_TIME
             )
 
 
@@ -92,7 +94,8 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 false,
                 price_feed_ETH.address,
                 price_feed_OP.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be WETH")
 
             await expect(DepositReceipt.deploy(
@@ -104,7 +107,8 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 false,
                 price_feed_ETH.address,
                 price_feed_OP.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be WETH")
         });
         
@@ -120,7 +124,8 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 false,
                 price_feed_ETH.address,
                 price_feed_OP.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
 
             await expect(DepositReceipt.deploy(
@@ -132,7 +137,8 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 false,
                 price_feed_ETH.address,
                 price_feed_OP.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
                     
         });
@@ -322,7 +328,8 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 false,
                 price_feed_ETH.address,
                 price_feed_OP.address,
-                swapSize
+                swapSize,
+                HEARTBEAT_TIME
                 )
 
             value = await depositReceipt2.priceLiquidity(liquidity)
