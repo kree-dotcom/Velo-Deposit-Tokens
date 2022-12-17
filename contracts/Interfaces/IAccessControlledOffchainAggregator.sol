@@ -2,7 +2,7 @@ pragma solidity 0.8.9; //the AccessControlledOffchainAggregator actually uses ^0
 
 interface IAccessControlledOffchainAggregator {
 
-    function minAnswer() external returns(int192);
+    function minAnswer() external view returns(int192);
 
-    function maxAnswer() external returns(int192);
+    function maxAnswer() external view returns(int192);
 }

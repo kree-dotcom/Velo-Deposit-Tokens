@@ -72,13 +72,11 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
         token0 = _token0;
         token1 = _token1;
         stable = _stable;
+
         priceFeed = IAggregatorV3(_priceFeed);
-        IAccessControlledOffchainAggregator  aggregator = IAccessControlledOffchainAggregator(priceFeed.aggregator());
-        //fetch the pricefeeds hard limits so we can be aware if these have been reached.
-        tokenMinPrice = aggregator.minAnswer();
-        tokenMaxPrice = aggregator.maxAnswer();
         oracleBase = 10 ** priceFeed.decimals();  //Chainlink USD oracles have 8d.p.
         swapSize = _swapSize;
+        pair = IPair(router.pairFor(_token0, _token1, _stable));
     }
 
    /**
@@ -97,13 +95,10 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
         uint256 value1;
         if (token0 == USDC){
             //hardcode value of USDC at $1
-            //check swap value of 100tokens to USDC to protect against flash loan attacks
-            uint256 amountOut; //amount received by trade
-            bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(swapSize, token1, USDC);
-            require(stablePool == stable, "pricing occuring through wrong pool" );
+            //check swap value of tokens worth roughly $100 to USDC to protect against flash loan attacks
+            uint256 amountOut = pair.getAmountOut(swapSize, token1); //amount received by trade
 
-            uint256 oraclePrice = getOraclePrice(priceFeed, tokenMaxPrice, tokenMinPrice);
+            uint256 oraclePrice = getOraclePrice(priceFeed);
             amountOut = (amountOut * oracleBase) / USDC_BASE / (swapSize/BASE); //shift USDC amount to same scale as oracle
 
             //calculate acceptable deviations from oracle price
@@ -120,21 +115,16 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
         //token1 must be USDC 
         else {
             //hardcode value of USDC at $1
-            //check swap value of 100tokens to USDC to protect against flash loan attacks
-            uint256 amountOut; //amount received by trade
-            bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(swapSize, token0, USDC);
-            require(stablePool == stable, "pricing occuring through wrong pool" );
+            //check swap value of tokens worth roughly $100 to USDC to protect against flash loan attacks
+            uint256 amountOut = pair.getAmountOut(swapSize, token0); //amount received by trade
 
-            uint256 oraclePrice = getOraclePrice(priceFeed, tokenMaxPrice, tokenMinPrice);
+            uint256 oraclePrice = getOraclePrice(priceFeed);
             amountOut = (amountOut * oracleBase) / USDC_BASE / (swapSize/BASE); //shift USDC amount to same scale as oracle
 
             //calculate acceptable deviations from oracle price
             uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
             uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
             //because 1 USDC = $1 we can compare its amount directly to bounds
-            console.log("lowerB", lowerBound);
-            console.log("amoutO", amountOut);
             require(lowerBound < amountOut, "Price shift low detected");
             require(upperBound > amountOut, "Price shift high detected");
 

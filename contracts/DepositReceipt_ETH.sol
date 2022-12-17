@@ -70,24 +70,16 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
         //fetch details for ETH price feed
         ETHPriceFeed = IAggregatorV3(_ETHPriceFeed);
         tokenPriceFeed = IAggregatorV3(_tokenPriceFeed);
-        IAccessControlledOffchainAggregator  ETHaggregator = IAccessControlledOffchainAggregator(ETHPriceFeed.aggregator());
-        //fetch the pricefeeds hard limits so we can be aware if these have been reached.
-        ETHMinPrice = ETHaggregator.minAnswer();
-        ETHMaxPrice = ETHaggregator.maxAnswer();
+       
         uint256 ETHOracleDecimals = ETHPriceFeed.decimals();  //Chainlink USD oracles have 8d.p.
         require(ETHOracleDecimals == tokenPriceFeed.decimals());
-
-        //fetch details for Token price feed
-        
-        IAccessControlledOffchainAggregator  tokenAggregator = IAccessControlledOffchainAggregator(tokenPriceFeed.aggregator());
-        //fetch the pricefeeds hard limits so we can be aware if these have been reached.
-        tokenMinPrice = tokenAggregator.minAnswer();
-        tokenMaxPrice = tokenAggregator.maxAnswer();
         // because we have checked both oracles have the same amount of decimals we only store one OracleBase
         oracleBase = 10 ** ETHOracleDecimals;
         
         //set the scale of the exchange swap used for priceLiquidity
         swapSize = _swapSize;
+
+        pair = IPair(router.pairFor(_token0, _token1, _stable));
         
     }
 
@@ -106,15 +98,11 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
         uint256 value0;
         uint256 value1;
         if (token0 == WETH){
-            //check swap value of 100tokens to USDC to protect against flash loan attacks
-            uint256 amountOut; //amount received by trade
-            bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(swapSize, token1, WETH);
-            
-            require(stablePool == stable, "pricing occuring through wrong pool" );
+            //check swap value of about $100 of tokens to WETH to protect against flash loan attacks
+            uint256 amountOut = pair.getAmountOut(swapSize, token1); //amount received by trade
 
-            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, tokenMaxPrice, tokenMinPrice);
-            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, ETHMaxPrice, ETHMinPrice);
+            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed);
+            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed);
             //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
             uint256 valueOut = amountOut * ETHOraclePrice / (swapSize/BASE) / BASE; 
 
@@ -122,7 +110,7 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             
             uint256 lowerBound = (tokenOraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
             uint256 upperBound = (tokenOraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
-            //because 1 USDC = $1 we can compare its amount directly to bounds
+            
             
             require(lowerBound < valueOut, "Price shift low detected");
             require(upperBound > valueOut, "Price shift high detected");
@@ -134,19 +122,17 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
         //token1 must be WETH
         else {
             
-            //check swap value of 100tokens to WETH to protect against flash loan attacks
-            uint256 amountOut; //amount received by trade
-            bool stablePool; //if the traded pool is stable or volatile.
-            (amountOut, stablePool) = router.getAmountOut(swapSize, token0, WETH);
-            require(stablePool == stable, "pricing occuring through wrong pool" );
-            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, tokenMaxPrice, tokenMinPrice);
-            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, ETHMaxPrice, ETHMinPrice);
+            //check swap value of about $100 of tokens to WETH to protect against flash loan attacks
+            uint256 amountOut = pair.getAmountOut(swapSize, token0); //amount received by trade
+           
+            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed);
+            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed);
             //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
             uint256 valueOut = amountOut * ETHOraclePrice / (swapSize/BASE) / BASE; 
             //calculate acceptable deviations from oracle price
             uint256 lowerBound = (tokenOraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
             uint256 upperBound = (tokenOraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
-            //because 1 USDC = $1 we can compare its amount directly to bounds
+            
             require(lowerBound < valueOut, "Price shift low detected");
             require(upperBound > valueOut, "Price shift high detected");
 

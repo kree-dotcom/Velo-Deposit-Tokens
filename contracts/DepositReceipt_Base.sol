@@ -9,6 +9,7 @@ import "./Interfaces/IAggregatorV3.sol";
 import "./Interfaces/IAccessControlledOffchainAggregator.sol";
 
 import "./Interfaces/IRouter.sol";
+import "./Interfaces/IPair.sol";
 
 
 abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
@@ -32,17 +33,11 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
     //router used for underlying asset quotes
     IRouter public router;
 
-    //hardcoded price bounds used by chainlink for ETH feed
-    int192 ETHMaxPrice;
-    int192 ETHMinPrice;
-    //hardcoded price bounds used by chainlink for Token in USD feed
-    int192 tokenMaxPrice;
-    int192 tokenMinPrice;
-
     //underlying gauge token details
     address public token0; 
     address public token1;
-    bool public stable;
+    bool public stable; //which pool to route trades through, stable or volatile
+    IPair public pair; //address of the related pool
 
     
     
@@ -155,11 +150,9 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
     /** 
      * @dev This function is view but uses block.timestamp which will only return a non-zero value in a tx call.
      * @param _priceFeed the Chainlink aggregator for the price you want to retrieve, ETH or Token.
-     * @param _maxPrice the immutable maximum price this aggregator has
-     * @param _minPrice the immutable minimum price this aggregator has
      * @return Oracle price converted to a uint256 for ease of use elsewhere
      */
-    function getOraclePrice(IAggregatorV3 _priceFeed, int192 _maxPrice, int192 _minPrice) public view returns (uint256 ) {
+    function getOraclePrice(IAggregatorV3 _priceFeed) public view returns (uint256 ) {
         (
             /*uint80 roundID*/,
             int signedPrice,
@@ -170,8 +163,12 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
         //check for Chainlink oracle deviancies, force a revert if any are present. Helps prevent a LUNA like issue
         require(signedPrice > 0, "Negative Oracle Price");
         require(timeStamp >= block.timestamp - HEARTBEAT_TIME , "Stale pricefeed");
-        require(signedPrice < _maxPrice, "Upper price bound breached");
-        require(signedPrice > _minPrice, "Lower price bound breached");
+        IAccessControlledOffchainAggregator  aggregator = IAccessControlledOffchainAggregator(_priceFeed.aggregator());
+        //fetch the pricefeeds hard limits so we can be aware if these have been reached.
+        int192 tokenMinPrice = aggregator.minAnswer();
+        int192 tokenMaxPrice = aggregator.maxAnswer();
+        require(signedPrice < tokenMaxPrice, "Upper price bound breached");
+        require(signedPrice > tokenMinPrice, "Lower price bound breached");
         uint256 price = uint256(signedPrice);
         return price;
 
