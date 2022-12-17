@@ -20,7 +20,6 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
     
     uint256 private constant HEARTBEAT_TIME = 24 hours; //Check heartbeat frequency when adding new feeds
     uint256 constant BASE = 1 ether; //division base
-    uint256 constant HUNDRED = 100; //used to scale 100 token price to 1 token price
     
     //Mapping from NFTid to number of associated poolTokens
     mapping(uint256 => uint256) public pooledTokens;

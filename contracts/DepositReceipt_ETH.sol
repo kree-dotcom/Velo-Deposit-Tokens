@@ -116,7 +116,7 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, tokenMaxPrice, tokenMinPrice);
             uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, ETHMaxPrice, ETHMinPrice);
             //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
-            uint256 valueOut = amountOut * ETHOraclePrice / HUNDRED / BASE; 
+            uint256 valueOut = amountOut * ETHOraclePrice / (swapSize/BASE) / BASE; 
 
             //calculate acceptable deviations from oracle price
             
@@ -142,7 +142,7 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, tokenMaxPrice, tokenMinPrice);
             uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, ETHMaxPrice, ETHMinPrice);
             //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
-            uint256 valueOut = amountOut * ETHOraclePrice / HUNDRED / BASE; 
+            uint256 valueOut = amountOut * ETHOraclePrice / (swapSize/BASE) / BASE; 
             //calculate acceptable deviations from oracle price
             uint256 lowerBound = (tokenOraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
             uint256 upperBound = (tokenOraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;

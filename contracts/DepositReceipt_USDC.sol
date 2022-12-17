@@ -104,7 +104,7 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
             require(stablePool == stable, "pricing occuring through wrong pool" );
 
             uint256 oraclePrice = getOraclePrice(priceFeed, tokenMaxPrice, tokenMinPrice);
-            amountOut = (amountOut * oracleBase) / USDC_BASE / HUNDRED; //shift USDC amount to same scale as oracle
+            amountOut = (amountOut * oracleBase) / USDC_BASE / (swapSize/BASE); //shift USDC amount to same scale as oracle
 
             //calculate acceptable deviations from oracle price
             uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
@@ -127,12 +127,14 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
             require(stablePool == stable, "pricing occuring through wrong pool" );
 
             uint256 oraclePrice = getOraclePrice(priceFeed, tokenMaxPrice, tokenMinPrice);
-            amountOut = (amountOut * oracleBase) / USDC_BASE / HUNDRED; //shift USDC amount to same scale as oracle
+            amountOut = (amountOut * oracleBase) / USDC_BASE / (swapSize/BASE); //shift USDC amount to same scale as oracle
 
             //calculate acceptable deviations from oracle price
             uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
             uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
             //because 1 USDC = $1 we can compare its amount directly to bounds
+            console.log("lowerB", lowerBound);
+            console.log("amoutO", amountOut);
             require(lowerBound < amountOut, "Price shift low detected");
             require(upperBound > amountOut, "Price shift high detected");
 

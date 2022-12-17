@@ -21,7 +21,7 @@ async function impersonateForToken(provider, receiver, ERC20, donerAddress, amou
 
 }
 
-describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
+describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
@@ -34,6 +34,7 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
     const USDC_doner = addresses.optimism.USDC_Doner
     const price_feed_address = addresses.optimism.Chainlink_SUSD_Feed
     const price_feed_SNX_address = addresses.optimism.Chainlink_SNX_Feed
+    const swapSize = ethers.utils.parseEther('100')
 
     router = new ethers.Contract(router_address, ABIs.Router, provider)
     price_feed = new ethers.Contract(price_feed_address, ABIs.PriceFeed, provider)
@@ -51,7 +52,7 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
         TESTERC20Token = await ethers.getContractFactory("TESTERC20Token")
         tokenA = await TESTERC20Token8DP.deploy("TokenA", "TA")
         
-
+        
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
             "DR",
@@ -59,7 +60,8 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
             USDC.address,
             sUSD.address,
             true,
-            price_feed.address
+            price_feed.address,
+            swapSize
             )
         
 
@@ -86,7 +88,8 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
                 tokenA.address,
                 sUSD.address,
                 true,
-                price_feed.address
+                price_feed.address,
+                swapSize
                 )).to.be.revertedWith("One token must be USDC")
 
             await expect(DepositReceipt.deploy(
@@ -96,7 +99,8 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
                 sUSD.address,
                 tokenA.address,
                 true,
-                price_feed.address
+                price_feed.address,
+                swapSize
                 )).to.be.revertedWith("One token must be USDC")
         });
         
@@ -110,7 +114,8 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
                 USDC.address,
                 erc20_8DP.address,
                 true,
-                price_feed.address
+                price_feed.address,
+                swapSize
                 )).to.be.revertedWith("Token does not have 18dp")
 
             await expect(DepositReceipt.deploy(
@@ -120,7 +125,8 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
                 erc20_8DP.address,
                 USDC.address,
                 true,
-                price_feed.address
+                price_feed.address,
+                swapSize
                 )).to.be.revertedWith("Token does not have 18dp")
                     
         });
@@ -232,7 +238,7 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
         it("Should revert price checks if a large swap tries to manipulate the value", async function (){
 
             
-
+            let SNX_swapSize = ethers.utils.parseEther('25')
 
             SNX_deposit_receipt = await DepositReceipt.deploy(
                 "Deposit_Receipt_SNX",
@@ -241,7 +247,8 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
                 SNX.address,
                 USDC.address,
                 false,
-                price_feed_SNX.address
+                price_feed_SNX.address,
+                SNX_swapSize
                 )
 
             //pass through function so this only checks inputs haven't been mismatched
@@ -268,7 +275,9 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
             //console.log("Before swap share is usdc ", tokens_before_swap[0], " snx ", tokens_before_swap[1])
             
             //expect price checks prior to the swap to succeed
+            console.log("reached 1")
             await SNX_deposit_receipt.priceLiquidity(liquidity)
+            console.log("reached 2")
 
             let balance_before = await SNX.balanceOf(owner.address)
 
@@ -287,6 +296,7 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
             await router.connect(owner).swapExactTokensForTokensSimple(SNX_to_swap, amountOutMin, SNX.address, USDC.address, false, owner.address, deadline)
             
             //expect price checks after resetting exchange rate on Velodrome to pass
+            
             await SNX_deposit_receipt.priceLiquidity(liquidity)
             
             //we should be able to check lower bound by doing the swap again but it reverts?
@@ -329,7 +339,8 @@ describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
                 sUSD.address,
                 USDC.address,
                 true,
-                price_feed.address
+                price_feed.address,
+                swapSize
                 )
 
             value = await depositReceipt2.priceLiquidity(liquidity)

@@ -21,7 +21,7 @@ async function impersonateForToken(provider, receiver, ERC20, donerAddress, amou
 
 }
 
-describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
+describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
@@ -35,6 +35,7 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
     const price_feed_OP_address = addresses.optimism.Chainlink_OP_Feed
     const price_feed_SNX_address = addresses.optimism.Chainlink_SNX_Feed
     const price_feed_ETH_address = addresses.optimism.Chainlink_ETH_Feed
+    let swapSize = ethers.utils.parseEther('100')
 
     router = new ethers.Contract(router_address, ABIs.Router, provider)
     price_feed_OP = new ethers.Contract(price_feed_OP_address, ABIs.PriceFeed, provider)
@@ -62,7 +63,8 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
             OP.address,
             false,
             price_feed_ETH.address,
-            price_feed_OP.address
+            price_feed_OP.address,
+            swapSize
             )
 
 
@@ -89,7 +91,8 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 sUSD.address,
                 false,
                 price_feed_ETH.address,
-                price_feed_OP.address
+                price_feed_OP.address,
+                swapSize
                 )).to.be.revertedWith("One token must be WETH")
 
             await expect(DepositReceipt.deploy(
@@ -100,7 +103,8 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 tokenA.address,
                 false,
                 price_feed_ETH.address,
-                price_feed_OP.address
+                price_feed_OP.address,
+                swapSize
                 )).to.be.revertedWith("One token must be WETH")
         });
         
@@ -115,7 +119,8 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 erc20_8DP.address,
                 false,
                 price_feed_ETH.address,
-                price_feed_OP.address
+                price_feed_OP.address,
+                swapSize
                 )).to.be.revertedWith("Token does not have 18dp")
 
             await expect(DepositReceipt.deploy(
@@ -126,7 +131,8 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 WETH.address,
                 false,
                 price_feed_ETH.address,
-                price_feed_OP.address
+                price_feed_OP.address,
+                swapSize
                 )).to.be.revertedWith("Token does not have 18dp")
                     
         });
@@ -315,7 +321,8 @@ describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
                 WETH.address,
                 false,
                 price_feed_ETH.address,
-                price_feed_OP.address
+                price_feed_OP.address,
+                swapSize
                 )
 
             value = await depositReceipt2.priceLiquidity(liquidity)
