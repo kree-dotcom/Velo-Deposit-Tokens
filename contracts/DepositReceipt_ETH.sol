@@ -30,8 +30,9 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
                 address _ETHPriceFeed,
                 address _tokenPriceFeed,
                 uint256 _swapSize,
-                uint256 _heartbeat)
-                DepositReceipt_Base(_heartbeat)
+                uint256 _heartbeat_token0,
+                uint256 _heartbeat_token1) 
+                DepositReceipt_Base(_heartbeat_token0, _heartbeat_token1)
                 ERC721(_name, _symbol){
         
         require(_swapSize > 0, "swapSize not set");
@@ -103,8 +104,8 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             //check swap value of about $100 of tokens to WETH to protect against flash loan attacks
             uint256 amountOut = pair.getAmountOut(swapSize, token1); //amount received by trade
 
-            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed);
-            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed);
+            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, token1);
+            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, WETH);
             //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
             uint256 valueOut = amountOut * ETHOraclePrice / (swapSize/BASE) / BASE; 
 
@@ -127,8 +128,8 @@ contract DepositReceipt_ETH is  DepositReceipt_Base {
             //check swap value of about $100 of tokens to WETH to protect against flash loan attacks
             uint256 amountOut = pair.getAmountOut(swapSize, token0); //amount received by trade
            
-            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed);
-            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed);
+            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, token0);
+            uint256 ETHOraclePrice = getOraclePrice(ETHPriceFeed, WETH);
             //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
             uint256 valueOut = amountOut * ETHOraclePrice / (swapSize/BASE) / BASE; 
             //calculate acceptable deviations from oracle price

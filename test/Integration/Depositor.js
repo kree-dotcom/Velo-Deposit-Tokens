@@ -28,8 +28,11 @@ describe("Integration OP Mainnet: Depositor contract", function () {
     gauge_address = addresses.optimism.Gauge
     router_address = addresses.optimism.Router
     pricefeed_address = addresses.optimism.Chainlink_SUSD_Feed 
+    pricefeed_USDC_address = addresses.optimism.Chainlink_USDC_Feed 
     AMMToken_donor = addresses.optimism.AMMToken_Donor
     const ZERO_ADDRESS = ethers.constants.AddressZero
+    const swapSize = ethers.utils.parseEther('100')
+    const heartbeat = 24*60*60 //1day
 
     const AMMToken = new ethers.Contract(AMMToken_address, ABIs.ERC20, provider)
     const gauge = new ethers.Contract(gauge_address, ABIs.Gauge, provider)
@@ -45,25 +48,28 @@ describe("Integration OP Mainnet: Depositor contract", function () {
         //determine what dark magic is causing this.
         
         /*
-        depositReceipt = await DepositReceipt.deploy(
+        depositReceipt_int = await DepositReceipt.deploy(
             "Deposit_Receipt",
             "DR",
             router_address,
             tokenA,
             tokenB, 
             true,
-            pricefeed_address
+            pricefeed_USDC_address,
+            pricefeed_address,
+            swapSize,
+            heartbeat,
+            heartbeat
             )
-        */ 
+        */
     
-
         depositor = await Depositor.connect(owner).deploy(
             depositReceipt.address,
             AMMToken.address,
             gauge.address,
             )
         
-        depositReceipt.connect(owner).addMinter(depositor.address)
+        await depositReceipt.connect(owner).addMinter(depositor.address)
         
         //hijack some AMMtokens for our user to test with here
         amount = await AMMToken.balanceOf(AMMToken_donor)
@@ -75,7 +81,7 @@ describe("Integration OP Mainnet: Depositor contract", function () {
 
     beforeEach(async () => {
         snapshotId = await helpers.snapshot(provider)
-        //console.log('Snapshotted at ', await provider.getBlockNumber())
+        console.log('Snapshotted at ', await provider.getBlockNumber())
     });
     
     afterEach(async () => {
@@ -172,7 +178,7 @@ describe("Integration OP Mainnet: Depositor contract", function () {
              expect(before_receipt_owner).to.equal(alice.address)
             
              
-             await expect(depositor.connect(owner).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith("ERC721: caller is not token owner or approved")
+             await expect(depositor.connect(owner).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith("Only NFT owner may withdraw")
  
         });
 
@@ -184,7 +190,9 @@ describe("Integration OP Mainnet: Depositor contract", function () {
              await depositor.connect(owner).depositToGauge(amount)
              rewards_address = ZERO_ADDRESS
 
-            await expect(depositor.connect(bob).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith("ERC721: caller is not token owner or approved")
+             await depositReceipt.connect(owner).approve(depositor.address, NFT_id)
+
+             await expect(depositor.connect(bob).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith("Only NFT owner may withdraw")
             
         });
 

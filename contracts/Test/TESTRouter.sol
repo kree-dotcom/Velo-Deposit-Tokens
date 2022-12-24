@@ -1,9 +1,16 @@
 pragma solidity =0.8.9;
 
+import "./TESTPair.sol";
 
 
 contract TESTRouter {
     address USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
+
+    TESTPair pair;
+
+    constructor(){
+        pair = new TESTPair();
+    }
 
     function addLiquidity() external{
         //dumbie to get a vAMM or sAMM test token
@@ -28,4 +35,8 @@ contract TESTRouter {
             return((amountIn *3)/5, true); //return 0.6x amountIn
         }
     } 
+
+    function pairFor(address _token0, address _token1, bool _stable) public returns(address){
+        return address(pair);
+    }
 }

@@ -5,6 +5,8 @@ const { helpers } = require("../helpers/testHelpers.js")
 describe("Unit tests: Templater contract", function () {
     const provider = ethers.provider;
     const ZERO_ADDRESS = ethers.constants.AddressZero;
+    const swapSize = 167000000
+    const heartbeat = 24*60*60 //1day
     
 
     before(async function () {
@@ -15,13 +17,17 @@ describe("Unit tests: Templater contract", function () {
         PriceOracle = await ethers.getContractFactory("TESTAggregatorV3")
         TESTVoter = await ethers.getContractFactory("TESTVoter")
         TESTGauge = await ethers.getContractFactory("TESTGauge")
+        TESTRouter = await ethers.getContractFactory("TESTRouter")
 
         //one token must mimic USDC to bypass checks
         tokenA = await TESTERC20Token.deploy("TokenA", "USDC")
         tokenB = await TESTERC20Token.deploy("TokenB", "TB")
         priceOracle = await PriceOracle.deploy(110000000)
+        priceOracle_USDC = await PriceOracle.deploy(100000000)
         gauge = await TESTGauge.deploy(alice.address)
         voter = await TESTVoter.deploy(gauge.address)
+        router = await TESTRouter.deploy()
+        
 
         templater = await Templater.deploy(
             tokenA.address,
@@ -29,8 +35,12 @@ describe("Unit tests: Templater contract", function () {
             true,
             alice.address,
             voter.address,
-            bob.address,
-            priceOracle.address)
+            router.address,
+            priceOracle_USDC.address,
+            priceOracle.address,
+            swapSize,
+            heartbeat,
+            heartbeat)
 
 
     })
@@ -67,8 +77,12 @@ describe("Unit tests: Templater contract", function () {
                 false,
                 alice.address,
                 voter.address,
-                bob.address,
-                priceOracle.address)
+                router.address,
+                priceOracle_USDC.address,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat)
 
             name = "Deposit-Receipt-VolatileV1 AMM - " + tokenA_symbol + "/" + tokenB_symbol
             symbol = "Receipt-vAMM-" + tokenA_symbol + "/" + tokenB_symbol
@@ -90,7 +104,11 @@ describe("Unit tests: Templater contract", function () {
                 alice.address,
                 voter.address,
                 bob.address,
-                priceOracle.address)).to.be.revertedWith("Zero address used")
+                priceOracle_USDC.address,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat)).to.be.revertedWith("Zero address used")
 
             await expect(Templater.deploy(
                 tokenA.address,
@@ -99,7 +117,11 @@ describe("Unit tests: Templater contract", function () {
                 alice.address,
                 voter.address,
                 bob.address,
-                priceOracle.address)).to.be.revertedWith("Zero address used")
+                priceOracle_USDC.address,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat)).to.be.revertedWith("Zero address used")
 
             await expect(Templater.deploy(
                 tokenA.address,
@@ -108,7 +130,11 @@ describe("Unit tests: Templater contract", function () {
                 ZERO_ADDRESS,
                 voter.address,
                 bob.address,
-                priceOracle.address)).to.be.revertedWith("Zero address used")
+                priceOracle_USDC.address,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat)).to.be.revertedWith("Zero address used")
             
             await expect(Templater.deploy(
                 tokenA.address,
@@ -117,7 +143,11 @@ describe("Unit tests: Templater contract", function () {
                 alice.address,
                 ZERO_ADDRESS,
                 bob.address,
-                priceOracle.address)).to.be.revertedWith("Zero address used")
+                priceOracle_USDC.address,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat)).to.be.revertedWith("Zero address used")
 
             await expect(Templater.deploy(
                 tokenA.address,
@@ -126,7 +156,11 @@ describe("Unit tests: Templater contract", function () {
                 alice.address,
                 voter.address,
                 ZERO_ADDRESS,
-                priceOracle.address)).to.be.revertedWith("Zero address used")
+                priceOracle_USDC.address,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat)).to.be.revertedWith("Zero address used")
 
             await expect(Templater.deploy(
                 tokenA.address,
@@ -135,7 +169,24 @@ describe("Unit tests: Templater contract", function () {
                 alice.address,
                 voter.address,
                 bob.address,
-                ZERO_ADDRESS)).to.be.revertedWith("Zero address used")
+                ZERO_ADDRESS,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat)).to.be.revertedWith("Zero address used")
+
+            await expect(Templater.deploy(
+                tokenA.address,
+                tokenB.address,
+                false,
+                alice.address,
+                voter.address,
+                bob.address,
+                priceOracle_USDC.address,
+                ZERO_ADDRESS,
+                swapSize,
+                heartbeat,
+                heartbeat)).to.be.revertedWith("Zero address used")
     
         });
         

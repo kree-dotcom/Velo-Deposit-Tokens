@@ -3,11 +3,14 @@ const { ethers } = require("hardhat")
 const { helpers } = require("../helpers/testHelpers.js")
 const { addresses } = require("../helpers/deployedAddresses.js")
 
-describe("Unit tests: DepositReceipt contract", function () {
+describe("Unit tests: DepositReceipt_USDC contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"))
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"))
     const USDC = addresses.optimism.USDC
+    const swapSize = 167*10**6
+    const heartbeat = 24*60*60 //1 day
+    const heartbeat_short = 20*60 //20min
 
     before(async function () {
         
@@ -24,6 +27,8 @@ describe("Unit tests: DepositReceipt contract", function () {
         erc20_8DP = await TESTERC20Token8DP.deploy("8DPToken", "8DP")
         router = await Router.deploy()
         priceOracle = await PriceOracle.deploy(110000000)
+        priceOracle_USDC = await PriceOracle.deploy(100000000)
+        
 
         
 
@@ -34,7 +39,11 @@ describe("Unit tests: DepositReceipt contract", function () {
             token1.address,
             token2.address,
             true,
-            priceOracle.address
+            priceOracle_USDC.address,
+            priceOracle.address,
+            swapSize,
+            heartbeat,
+            heartbeat
             )
 
         //duplicate used for one pricing test
@@ -45,7 +54,11 @@ describe("Unit tests: DepositReceipt contract", function () {
                 USDC,
                 token1.address,
                 true,
-                priceOracle.address
+                priceOracle_USDC.address,
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat
                 )
 
     })
@@ -70,7 +83,11 @@ describe("Unit tests: DepositReceipt contract", function () {
                 token3.address,
                 token2.address,
                 true,
-                price_feed.address
+                priceOracle_USDC.address,
+                price_feed.address,
+                swapSize,
+                heartbeat,
+                heartbeat
                 )).to.be.revertedWith("One token must be USDC")
 
             await expect(DepositReceipt.deploy(
@@ -80,7 +97,11 @@ describe("Unit tests: DepositReceipt contract", function () {
                     token2.address,
                     token3.address,
                     true,
-                    price_feed.address
+                    priceOracle_USDC.address,
+                    price_feed.address,
+                    swapSize,
+                    heartbeat,
+                    heartbeat
                     )).to.be.revertedWith("One token must be USDC")
                     
         });
@@ -94,7 +115,11 @@ describe("Unit tests: DepositReceipt contract", function () {
                 USDC,
                 erc20_8DP.address,
                 true,
-                price_feed.address
+                priceOracle_USDC.address,
+                price_feed.address,
+                swapSize,
+                heartbeat,
+                heartbeat
                 )).to.be.revertedWith("Token does not have 18dp")
 
             await expect(DepositReceipt.deploy(
@@ -104,7 +129,11 @@ describe("Unit tests: DepositReceipt contract", function () {
                 erc20_8DP.address,
                 USDC,
                 true,
-                price_feed.address
+                priceOracle_USDC.address,
+                price_feed.address,
+                swapSize,
+                heartbeat,
+                heartbeat
                 )).to.be.revertedWith("Token does not have 18dp")
                     
         });

@@ -5,6 +5,8 @@ const { addresses } = require("../helpers/deployedAddresses.js")
 
 describe("Integration OP Mainnet: Templater contract", function () {
     const provider = ethers.provider;
+    const swapSize = ethers.utils.parseEther('100')
+    const heartbeat = 24*60*60 //1day
     
 
     before(async function () {
@@ -18,6 +20,8 @@ describe("Integration OP Mainnet: Templater contract", function () {
         voter = addresses.optimism.Voter
         router = addresses.optimism.Router
         pricefeed_address = addresses.optimism.Chainlink_SUSD_Feed
+        pricefeed_USDC_address = addresses.optimism.Chainlink_USDC_Feed
+
 
         templater = await Templater.deploy(
             tokenA,
@@ -26,7 +30,11 @@ describe("Integration OP Mainnet: Templater contract", function () {
             AMMToken_address,
             voter,
             router,
-            pricefeed_address
+            pricefeed_USDC_address,
+            pricefeed_address,
+            swapSize,
+            heartbeat,
+            heartbeat
             )
 
 

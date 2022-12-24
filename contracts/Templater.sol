@@ -43,16 +43,21 @@ contract Templater {
                 address _AMMToken, 
                 address _voter,
                 address _router,
+                address _priceFeedUSDC,
                 address _priceFeed,
                 uint256 _swapSize,
-                uint256 _heartbeat_time
+                uint256 _heartbeat_time_token0,
+                uint256 _heartbeat_time_token1
                 ){
         require( _token0 != ZERO_ADDRESS, "Zero address used");
         require( _token1 != ZERO_ADDRESS, "Zero address used");
         require( _AMMToken != ZERO_ADDRESS, "Zero address used");
         require( _router != ZERO_ADDRESS, "Zero address used");
         require( _voter != ZERO_ADDRESS, "Zero address used");
+        require( _priceFeedUSDC != ZERO_ADDRESS, "Zero address used");
         require( _priceFeed != ZERO_ADDRESS, "Zero address used");
+        require( _heartbeat_time_token0 != 0, "Heartbeat zero");
+        require( _heartbeat_time_token1 != 0, "Heartbeat zero");
 
         string memory name;
         string memory symbol;
@@ -74,9 +79,11 @@ contract Templater {
                                             _token0, 
                                             _token1, 
                                             _stable,
+                                            _priceFeedUSDC,
                                             _priceFeed,
                                             _swapSize,
-                                            _heartbeat_time
+                                            _heartbeat_time_token0,
+                                            _heartbeat_time_token1
                                             );
                                             
         emit DepositReceiptSetUp(address(depositReceipt));

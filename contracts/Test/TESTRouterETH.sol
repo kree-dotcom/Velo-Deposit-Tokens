@@ -1,9 +1,17 @@
 pragma solidity =0.8.9;
 
+import "./TESTPair.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract TESTRouterETH {
     address WETH = 0x4200000000000000000000000000000000000006;
+
+
+    TESTPair pair;
+
+    constructor(){
+        pair = new TESTPair();
+    }
 
     function addLiquidity() external{
         //dumbie to get a vAMM or sAMM test token
@@ -34,4 +42,8 @@ contract TESTRouterETH {
             return((amountIn/12*11/10) , true); //return 0.6x amountIn
         }
     } 
+
+    function pairFor(address _token0, address _token1, bool _stable) public returns(address){
+        return address(pair);
+    }
 }

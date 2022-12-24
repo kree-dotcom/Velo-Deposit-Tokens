@@ -19,7 +19,8 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");  
 
     
-    uint256 private immutable heartbeat_time; //Check heartbeat frequency when adding new feeds
+    uint256 private immutable heartbeat_time_token0; //Check heartbeat frequency when adding new feeds
+    uint256 private immutable heartbeat_time_token1;
     uint256 constant BASE = 1 ether; //division base
     
     //Mapping from NFTid to number of associated poolTokens
@@ -58,8 +59,9 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
         _;
     }
 
-    constructor(uint256 _heartbeat){
-        heartbeat_time = _heartbeat;
+    constructor(uint256 _heartbeat_token0, uint256 _heartbeat_token1){
+        heartbeat_time_token0 = _heartbeat_token0;
+        heartbeat_time_token1 = _heartbeat_token1;
     }
     
     function addMinter(address _account) external onlyAdmin{
@@ -156,7 +158,7 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
      * @param _priceFeed the Chainlink aggregator for the price you want to retrieve, ETH or Token.
      * @return Oracle price converted to a uint256 for ease of use elsewhere
      */
-    function getOraclePrice(IAggregatorV3 _priceFeed) public view returns (uint256 ) {
+    function getOraclePrice(IAggregatorV3 _priceFeed, address token) public view returns (uint256 ) {
         (
             uint80 roundID,
             int signedPrice,
@@ -166,12 +168,20 @@ abstract contract DepositReceipt_Base is  ERC721Enumerable, AccessControl {
         ) = _priceFeed.latestRoundData();
         //check for Chainlink oracle deviancies, force a revert if any are present. Helps prevent a LUNA like issue
         require(signedPrice > 0, "Negative Oracle Price");
+        uint256 heartbeat_time;
+        if (token == token0){
+            heartbeat_time = heartbeat_time_token0;
+        }
+        else{
+            heartbeat_time = heartbeat_time_token1;
+        }
         require(timeStamp >= block.timestamp - heartbeat_time , "Stale pricefeed");
         IAccessControlledOffchainAggregator  aggregator = IAccessControlledOffchainAggregator(_priceFeed.aggregator());
         //fetch the pricefeeds hard limits so we can be aware if these have been reached.
         int192 tokenMinPrice = aggregator.minAnswer();
         int192 tokenMaxPrice = aggregator.maxAnswer();
-        require(signedPrice < tokenMaxPrice, "Upper price bound breached");
+        //The min/maxPrice is the smallest/largest value the aggregator will post and so if it is reached we can no longer trust the oracle price hasn't gone beyond it.
+        require(signedPrice < tokenMaxPrice, "Upper price bound breached"); 
         require(signedPrice > tokenMinPrice, "Lower price bound breached");
         require(answeredInRound >= roundID, "round not complete");
         uint256 price = uint256(signedPrice);

@@ -21,7 +21,7 @@ async function impersonateForToken(provider, receiver, ERC20, donerAddress, amou
 
 }
 
-describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function () {
+describe("Integration OP Mainnet: DepositReceipt ETH contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
@@ -66,6 +66,7 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
             price_feed_ETH.address,
             price_feed_OP.address,
             swapSize,
+            HEARTBEAT_TIME,
             HEARTBEAT_TIME
             )
 
@@ -95,6 +96,7 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 price_feed_ETH.address,
                 price_feed_OP.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be WETH")
 
@@ -108,6 +110,7 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 price_feed_ETH.address,
                 price_feed_OP.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be WETH")
         });
@@ -125,6 +128,7 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 price_feed_ETH.address,
                 price_feed_OP.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
 
@@ -138,6 +142,7 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 price_feed_ETH.address,
                 price_feed_OP.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
                     
@@ -329,6 +334,7 @@ describe.only("Integration OP Mainnet: DepositReceipt ETH contract", function ()
                 price_feed_ETH.address,
                 price_feed_OP.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )
 

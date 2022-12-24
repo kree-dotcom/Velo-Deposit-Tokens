@@ -21,7 +21,7 @@ async function impersonateForToken(provider, receiver, ERC20, donerAddress, amou
 
 }
 
-describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function () {
+describe("Integration OP Mainnet: DepositReceipt USDC contract", function () {
     const provider = ethers.provider;
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"));
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"));
@@ -33,12 +33,15 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
     const SNX_doner = addresses.optimism.SNX_Doner
     const USDC_doner = addresses.optimism.USDC_Doner
     const price_feed_address = addresses.optimism.Chainlink_SUSD_Feed
+    const price_feed_USDC_address = addresses.optimism.Chainlink_USDC_Feed
     const price_feed_SNX_address = addresses.optimism.Chainlink_SNX_Feed
     const swapSize = ethers.utils.parseEther('100')
     const HEARTBEAT_TIME = 24*60*60 // 24hours in seconds
+    const HEARTBEAT_TIME_SHORT = 20*60 // 20min in seconds
 
     router = new ethers.Contract(router_address, ABIs.Router, provider)
     price_feed = new ethers.Contract(price_feed_address, ABIs.PriceFeed, provider)
+    price_feed_USDC = new ethers.Contract(price_feed_USDC_address, ABIs.PriceFeed, provider)
     price_feed_SNX = new ethers.Contract(price_feed_SNX_address, ABIs.PriceFeed, provider)
     SNX =  new ethers.Contract(SNX_address, ABIs.ERC20, provider)
     USDC =  new ethers.Contract(USDC_address, ABIs.ERC20, provider)
@@ -61,8 +64,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
             USDC.address,
             sUSD.address,
             true,
+            price_feed_USDC.address,
             price_feed.address,
             swapSize,
+            HEARTBEAT_TIME,
             HEARTBEAT_TIME
             )
         
@@ -90,8 +95,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 tokenA.address,
                 sUSD.address,
                 true,
+                price_feed_USDC.address,
                 price_feed.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be USDC")
 
@@ -102,8 +109,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 sUSD.address,
                 tokenA.address,
                 true,
+                price_feed_USDC.address,
                 price_feed.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("One token must be USDC")
         });
@@ -118,8 +127,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 USDC.address,
                 erc20_8DP.address,
                 true,
+                price_feed_USDC.address,
                 price_feed.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
 
@@ -130,8 +141,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 erc20_8DP.address,
                 USDC.address,
                 true,
+                price_feed_USDC.address,
                 price_feed.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )).to.be.revertedWith("Token does not have 18dp")
                     
@@ -253,8 +266,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 SNX.address,
                 USDC.address,
                 false,
+                price_feed_USDC.address,
                 price_feed_SNX.address,
                 SNX_swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )
 
@@ -325,11 +340,14 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
             
             
             let outputs = await depositReceipt.viewQuoteRemoveLiquidity(liquidity)
-            //as token0 is USDC we just scale up
-            let value_token0 = outputs[0].mul(SCALE_SHIFT)
-            let latest_round = await (price_feed.latestRoundData())
-            let price = latest_round[1]
-            let value_token1 = outputs[1].mul(price).div(ORACLE_BASE)
+            //token0 is USDC 
+            let latest_round_USDC = await (price_feed_USDC.latestRoundData())
+            let price_USDC = latest_round_USDC[1]
+            let value_token0 = outputs[0].mul(SCALE_SHIFT).mul(price_USDC).div(ORACLE_BASE)
+
+            let latest_round_token = await (price_feed.latestRoundData())
+            let price_token = latest_round_token[1]
+            let value_token1 = outputs[1].mul(price_token).div(ORACLE_BASE)
             let expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
             
@@ -344,8 +362,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
                 sUSD.address,
                 USDC.address,
                 true,
+                price_feed_USDC.address,
                 price_feed.address,
                 swapSize,
+                HEARTBEAT_TIME,
                 HEARTBEAT_TIME
                 )
 
@@ -358,7 +378,10 @@ describe.only("Integration OP Mainnet: DepositReceipt USDC contract", function (
             value_token0 = outputs[1].mul(price).div(ORACLE_BASE)
             
             //as token1 is USDC
-            value_token1 = outputs[0].mul(SCALE_SHIFT)
+            latest_round_USDC = await (price_feed_USDC.latestRoundData())
+            price_USDC = latest_round_USDC[1]
+            value_token1 = outputs[0].mul(SCALE_SHIFT).mul(price_USDC).div(ORACLE_BASE)
+
             expected_value = ( value_token0 ).add( value_token1 )
             expect(value).to.equal(expected_value)
                 

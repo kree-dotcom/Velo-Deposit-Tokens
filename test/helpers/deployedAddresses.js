@@ -14,6 +14,7 @@ const chainlink_SUSD_feed = "0x7f99817d87baD03ea21E05112Ca799d715730efe"
 const chainlink_SNX_feed = "0x2FCF37343e916eAEd1f1DdaaF84458a359b53877"
 const chainlink_ETH_feed = "0x13e3Ee699D1909E989722E753853AE30b17e08c5"
 const chainlink_OP_feed = "0x0D276FC14719f9292D5C1eA2198673d1f4269246"
+const chainlink_USDC_feed = "0x16a9fa2fda030272ce99b29cf780dfa30361e0f3"
 const SNX_doner = "0xa5f7a39E55D7878bC5bd754eE5d6BD7a7662355b"
 const USDC_doner = "0xd6216fc19db775df9774a6e33526131da7d19a2c"
 
@@ -37,7 +38,8 @@ const optimism_OP = {sUSD: sUSD,
                      Chainlink_SUSD_Feed : chainlink_SUSD_feed,
                      Chainlink_ETH_Feed : chainlink_ETH_feed,
                      Chainlink_SNX_Feed : chainlink_SNX_feed,
-                     Chainlink_OP_Feed : chainlink_OP_feed}
+                     Chainlink_OP_Feed : chainlink_OP_feed,
+                     Chainlink_USDC_Feed : chainlink_USDC_feed}
 
 
 addresses = {optimism: optimism_OP}

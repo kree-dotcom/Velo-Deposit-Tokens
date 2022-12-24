@@ -5,6 +5,8 @@ const { helpers } = require("../helpers/testHelpers.js")
 describe("Unit tests: Depositor contract", function () {
     const provider = ethers.provider;
     const stable = true;
+    const swapSize = 167*10**6
+    const heartbeat = 24*60*60 //1day
 
     before(async function () {
         
@@ -26,6 +28,8 @@ describe("Unit tests: Depositor contract", function () {
         gauge = await Gauge.deploy(AMMToken.address)
         router = await TESTRouter.deploy()
         priceOracle = await PriceOracle.deploy(110000000)
+        priceOracle_USDC = await PriceOracle.deploy(100000000)
+        
         
         depositReceipt = await DepositReceipt.deploy(
             "Deposit_Receipt",
@@ -34,7 +38,11 @@ describe("Unit tests: Depositor contract", function () {
             token0.address,
             token1.address,
             true,
-            priceOracle.address
+            priceOracle_USDC.address,
+            priceOracle.address,
+            swapSize,
+            heartbeat,
+            heartbeat
             )
 
         depositor = await Depositor.connect(owner).deploy(
@@ -146,7 +154,7 @@ describe("Unit tests: Depositor contract", function () {
              await depositReceipt["safeTransferFrom(address,address,uint256)"](owner.address, alice.address, NFT_id)
              after_NFT_owner = await depositReceipt.ownerOf(NFT_id)
              expect(after_NFT_owner).to.equal(alice.address)
-             await expect(depositor.connect(owner).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith("ERC721: caller is not token owner or approved")
+             await expect(depositor.connect(owner).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith("Only NFT owner may withdraw")
  
         });
 
@@ -157,7 +165,7 @@ describe("Unit tests: Depositor contract", function () {
             AMMToken.approve(depositor.address, amount)
             await depositor.connect(owner).depositToGauge(amount)
 
-            await expect(depositor.connect(bob).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith('ERC721: caller is not token owner or approved')
+            await expect(depositor.connect(bob).withdrawFromGauge(NFT_id, [rewards_address])).to.be.revertedWith("Only NFT owner may withdraw")
             
         });
 
@@ -212,7 +220,7 @@ describe("Unit tests: Depositor contract", function () {
              await depositReceipt["safeTransferFrom(address,address,uint256)"](owner.address, alice.address, NFT_id)
              after_NFT_owner = await depositReceipt.ownerOf(NFT_id)
              expect(after_NFT_owner).to.equal(alice.address)
-             await expect(depositor.connect(owner).partialWithdrawFromGauge(NFT_id, 1, [rewards_address])).to.be.revertedWith("ERC721: caller is not token owner or approved")
+             await expect(depositor.connect(owner).partialWithdrawFromGauge(NFT_id, 1, [rewards_address])).to.be.revertedWith("Only NFT owner may withdraw")
  
         });
 
@@ -223,7 +231,7 @@ describe("Unit tests: Depositor contract", function () {
             AMMToken.approve(depositor.address, amount)
             await depositor.connect(owner).depositToGauge(amount)
 
-            await expect(depositor.connect(bob).partialWithdrawFromGauge(NFT_id, 1, [rewards_address])).to.be.revertedWith('ERC721: caller is not token owner or approved')
+            await expect(depositor.connect(bob).partialWithdrawFromGauge(NFT_id, 1, [rewards_address])).to.be.revertedWith("Only NFT owner may withdraw")
             
         });
 
@@ -306,7 +314,7 @@ describe("Unit tests: Depositor contract", function () {
                 3, //partial NFT id
                 fifty_one_percent, //partial NFT withdraw percentage
                 [rewards_address]
-                )).to.be.revertedWith("ERC721: caller is not token owner or approved")
+                )).to.be.revertedWith("Only NFT owner may withdraw")
  
         });
 
@@ -317,15 +325,15 @@ describe("Unit tests: Depositor contract", function () {
             AMMToken.approve(depositor.address, amount)
             await depositor.connect(owner).depositToGauge(amount.div(3))
             await depositor.connect(owner).depositToGauge(amount.div(3))
-             await depositor.connect(owner).depositToGauge(amount.div(3))
+            await depositor.connect(owner).depositToGauge(amount.div(3))
 
-            await expect(depositor.connect(owner).multiWithdrawFromGauge(
+            await expect(depositor.connect(alice).multiWithdrawFromGauge(
                 [1,2],
                 true, //using partial withdraw
                 3, //partial NFT id
                 fifty_one_percent, //partial NFT withdraw percentage
                 [rewards_address]
-                )).to.be.revertedWith('ERC721: caller is not token owner or approved')
+                )).to.be.revertedWith("Only NFT owner may withdraw")
             
         });
 

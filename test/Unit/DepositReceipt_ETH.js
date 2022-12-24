@@ -8,7 +8,9 @@ describe("Unit tests: DepositReceiptETH contract", function () {
     const ADMIN_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("ADMIN_ROLE"))
     const MINTER_ROLE = ethers.utils.keccak256(ethers.utils.toUtf8Bytes("MINTER_ROLE"))
     const WETH = addresses.optimism.WETH
-   
+    const swapSize = ethers.utils.parseEther('100')
+    const heartbeat = 20*60 //20min
+    const heartbeat_long = 12*60*60 //12 hours
 
     before(async function () {
         
@@ -26,6 +28,7 @@ describe("Unit tests: DepositReceiptETH contract", function () {
         router_ETH = await Router_ETH.deploy()
         priceOracle = await PriceOracle.deploy(110000000)
         ETHPriceOracle = await PriceOracle.deploy(1200000000)
+        
 
         
 
@@ -37,7 +40,10 @@ describe("Unit tests: DepositReceiptETH contract", function () {
             token2.address,
             true,
             ETHPriceOracle.address,
-            priceOracle.address
+            priceOracle.address,
+            swapSize,
+            heartbeat,
+            heartbeat_long
             )
 
         //duplicate used for one pricing test
@@ -49,7 +55,10 @@ describe("Unit tests: DepositReceiptETH contract", function () {
                 token1.address,
                 true,
                 ETHPriceOracle.address,
-                priceOracle.address
+                priceOracle.address,
+                swapSize,
+                heartbeat,
+                heartbeat_long
                 )
 
     })
@@ -75,7 +84,10 @@ describe("Unit tests: DepositReceiptETH contract", function () {
                 token2.address,
                 true,
                 ETHPriceOracle.address,
-                price_feed.address
+                price_feed.address,
+                swapSize,
+                heartbeat,
+                heartbeat_long
                 )).to.be.revertedWith("One token must be WETH")
 
             await expect(DepositReceipt.deploy(
@@ -86,7 +98,10 @@ describe("Unit tests: DepositReceiptETH contract", function () {
                     token3.address,
                     true,
                     ETHPriceOracle.address,
-                    price_feed.address
+                    price_feed.address,
+                    swapSize,
+                    heartbeat,
+                    heartbeat_long
                     )).to.be.revertedWith("One token must be WETH")
                     
         });
@@ -101,7 +116,10 @@ describe("Unit tests: DepositReceiptETH contract", function () {
                 erc20_8DP.address,
                 true,
                 ETHPriceOracle.address,
-                price_feed.address
+                price_feed.address,
+                swapSize,
+                heartbeat,
+                heartbeat_long
                 )).to.be.revertedWith("Token does not have 18dp")
 
             await expect(DepositReceipt.deploy(
@@ -112,7 +130,10 @@ describe("Unit tests: DepositReceiptETH contract", function () {
                 WETH,
                 true,
                 ETHPriceOracle.address,
-                price_feed.address
+                price_feed.address,
+                swapSize,
+                heartbeat,
+                heartbeat_long
                 )).to.be.revertedWith("Token does not have 18dp")
                     
         });

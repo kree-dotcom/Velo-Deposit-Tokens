@@ -14,7 +14,8 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
     uint256 private constant HUNDRED_FIVE_USDC = 1e8 + 5e6;
 
     //Chainlink oracle source
-    IAggregatorV3 public priceFeed;
+    IAggregatorV3 public tokenPriceFeed;
+    IAggregatorV3 public USDCPriceFeed;
     // ten to the power of the number of decimals given by the price feed
     uint256 private immutable oracleBase;
 
@@ -29,10 +30,12 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
                 address _token0,
                 address _token1,
                 bool _stable,
-                address _priceFeed,
+                address _USDCPriceFeed,
+                address _tokenPriceFeed,
                 uint256 _swapSize,
-                uint256 _heartbeat) 
-                DepositReceipt_Base(_heartbeat)
+                uint256 _heartbeat_token0,
+                uint256 _heartbeat_token1) 
+                DepositReceipt_Base(_heartbeat_token0, _heartbeat_token1)
                 ERC721(_name, _symbol){
 
         //we dont want the `DEFAULT_ADMIN_ROLE` to exist as this doesn't require a 
@@ -75,15 +78,24 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
         token1 = _token1;
         stable = _stable;
 
-        priceFeed = IAggregatorV3(_priceFeed);
-        oracleBase = 10 ** priceFeed.decimals();  //Chainlink USD oracles have 8d.p.
+        USDCPriceFeed = IAggregatorV3(_USDCPriceFeed);
+        tokenPriceFeed = IAggregatorV3(_tokenPriceFeed);
+
+        uint256 USDCOracleDecimals = USDCPriceFeed.decimals();  //Chainlink USD oracles have 8d.p.
+        require(USDCOracleDecimals == tokenPriceFeed.decimals());
+
+        oracleBase = 10 ** USDCOracleDecimals;  //Chainlink USD oracles have 8d.p.
+        
+        //set the scale of the exchange swap used for priceLiquidity
         swapSize = _swapSize;
+
         pair = IPair(router.pairFor(_token0, _token1, _stable));
     }
 
-   /**
+   
+    /**
     *  @notice this is used to price pooled Tokens by determining their underlying assets and then pricing these
-    *  @notice the two ways to do this are to price to USDC as  a dollar equivalent or to ETH then use Chainlink price feeds
+    *  @notice using Chainlink price feeds and a Velodrome swap estimate to prevent flash loan exploits
     *  @dev each DepositReceipt has a bespoke valuation method, make sure it fits the tokens
     *  @dev each DepositReceipt's valuation method is sensitive to available liquidity keep this in mind as liquidating a pooled token by using the same pool will reduce overall liquidity
 
@@ -92,50 +104,55 @@ contract DepositReceipt_USDC is  DepositReceipt_Base {
         uint256 token0Amount;
         uint256 token1Amount;
         (token0Amount, token1Amount) = viewQuoteRemoveLiquidity(_liquidity);
-        //USDC route 
+        
         uint256 value0;
         uint256 value1;
         if (token0 == USDC){
-            //hardcode value of USDC at $1
-            //check swap value of tokens worth roughly $100 to USDC to protect against flash loan attacks
+            //check swap value of about $100 of tokens to WETH to protect against flash loan attacks
             uint256 amountOut = pair.getAmountOut(swapSize, token1); //amount received by trade
 
-            uint256 oraclePrice = getOraclePrice(priceFeed);
-            amountOut = (amountOut * oracleBase) / USDC_BASE / (swapSize/BASE); //shift USDC amount to same scale as oracle
+            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, token1);
+            uint256 USDCOraclePrice = getOraclePrice(USDCPriceFeed, USDC);
+            //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
+            uint256 valueOut = amountOut * USDCOraclePrice / (swapSize/BASE) / USDC_BASE; 
 
             //calculate acceptable deviations from oracle price
-            uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
-            uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
-            //because 1 USDC = $1 we can compare its amount directly to bounds
-            require(lowerBound < amountOut, "Price shift low detected");
-            require(upperBound > amountOut, "Price shift high detected");
-
-            value0 = token0Amount * SCALE_SHIFT;
             
-            value1 = (token1Amount * oraclePrice) / oracleBase;
+            uint256 lowerBound = (tokenOraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
+            uint256 upperBound = (tokenOraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
+            
+            
+            require(lowerBound < valueOut, "Price shift low detected");
+            require(upperBound > valueOut, "Price shift high detected");
+
+            //adjust the scale of USDC to match 18.d.p tokens
+            value0 = token0Amount * USDCOraclePrice * SCALE_SHIFT;
+            
+            value1 = token1Amount * tokenOraclePrice;
         }
-        //token1 must be USDC 
+        //token1 must be USDC
         else {
-            //hardcode value of USDC at $1
-            //check swap value of tokens worth roughly $100 to USDC to protect against flash loan attacks
+            
+            //check swap value of about $100 of tokens to WETH to protect against flash loan attacks
             uint256 amountOut = pair.getAmountOut(swapSize, token0); //amount received by trade
-
-            uint256 oraclePrice = getOraclePrice(priceFeed);
-            amountOut = (amountOut * oracleBase) / USDC_BASE / (swapSize/BASE); //shift USDC amount to same scale as oracle
-
-            //calculate acceptable deviations from oracle price
-            uint256 lowerBound = (oraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
-            uint256 upperBound = (oraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
-            //because 1 USDC = $1 we can compare its amount directly to bounds
-            require(lowerBound < amountOut, "Price shift low detected");
-            require(upperBound > amountOut, "Price shift high detected");
-
-            value1 = token1Amount * SCALE_SHIFT;
            
-            value0 = (token0Amount * oraclePrice) / oracleBase;
+            uint256 tokenOraclePrice = getOraclePrice(tokenPriceFeed, token0);
+            uint256 USDCOraclePrice = getOraclePrice(USDCPriceFeed, USDC);
+            //reduce amountOut to the value of one token in dollars in the same scale as tokenOraclePrice (1e8)
+            uint256 valueOut = amountOut * USDCOraclePrice / (swapSize/BASE) / USDC_BASE; 
+            //calculate acceptable deviations from oracle price
+            uint256 lowerBound = (tokenOraclePrice * (BASE - ALLOWED_DEVIATION)) / BASE;
+            uint256 upperBound = (tokenOraclePrice * (BASE + ALLOWED_DEVIATION)) / BASE;
+            
+            require(lowerBound < valueOut, "Price shift low detected");
+            require(upperBound > valueOut, "Price shift high detected");
+
+            //adjust the scale of USDC to match 18.d.p tokens
+            value1 = token1Amount * USDCOraclePrice * SCALE_SHIFT;
+            
+            value0 = token0Amount * tokenOraclePrice;
         }
-        //Invariant: both value0 and value1 are in ETH scale 18.d.p now
-        //USDC has only 6 decimals so we bring it up to the same scale as other 18d.p ERC20s
-        return(value0 + value1);
+        // because value0 and value1 are in the same scale we can reduce them to 1e18 scale after adding.
+        return((value0 + value1)/oracleBase);
     }
 }
